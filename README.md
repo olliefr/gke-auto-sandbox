@@ -57,7 +57,8 @@ The GKE cluster:
 * is _private_ as the nodes do not have public IP addresses;
 * is _regional_ as the control nodes are allocated in multiple zones;
 * is _multi-zonal_ as the nodes are allocated in multiple zones;
-* has _public endpoint_ with a _list of authorised control networks_.
+* has _public endpoint_ with a _list of authorised control networks_;
+* has [Dataplane V2](https://cloud.google.com/blog/products/containers-kubernetes/bringing-ebpf-and-cilium-to-google-kubernetes-engine) enabled so can enforce Network Policies.
 
 **!!** The worker nodes are pre-emptible by default to save money.
 
