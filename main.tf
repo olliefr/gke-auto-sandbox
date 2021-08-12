@@ -77,17 +77,17 @@ resource "google_container_cluster" "prod" {
   }
 }
 
-resource "google_container_node_pool" "e2_medium_pool" {
+resource "google_container_node_pool" "e2_standard_pool" {
 	cluster            = google_container_cluster.prod.name
 	location           = google_container_cluster.prod.location
-	name               = "e2-medium-pool"
+	name               = "e2-standard-pool"
   
   # In regional or multi-zonal clusters, number of nodes per zone
   node_count         = 1
 
   node_config {
     preemptible  = var.preemptible
-    machine_type = "e2-medium"
+    machine_type = "e2-standard-2"
     image_type   = "COS_CONTAINERD"
 		disk_size_gb = "12"
 
