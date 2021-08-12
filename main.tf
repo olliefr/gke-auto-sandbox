@@ -81,6 +81,10 @@ resource "google_container_cluster" "prod" {
   # https://cilium.io/blog/2020/08/19/google-chooses-cilium-for-gke-networking
   # https://github.com/hashicorp/terraform-provider-google/issues/7207
   datapath_provider = "ADVANCED_DATAPATH"
+
+  # Network policy enforcement is built into Dataplane V2. 
+  # You do not need to enable network policy enforcement in clusters that use Dataplane V2.
+  # https://cloud.google.com/kubernetes-engine/docs/how-to/network-policy#enabling_network_policy_enforcement
 }
 
 resource "google_container_node_pool" "e2_standard_pool" {
