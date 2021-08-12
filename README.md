@@ -60,3 +60,11 @@ The GKE cluster:
 * has _public endpoint_ with a _list of authorised control networks_.
 
 **!!** The worker nodes are pre-emptible by default to save money.
+
+## Cloud Router and Cloud NAT Gateway
+
+The nature of the microservices demo that is going to be deployed into this cluster requires it pulling a Docker image from Docker Hub. 
+
+Unlike Google Container Registry, the Docker Hub is not part of the Google network. Therefore, to pull an image, the node must have outbound access to the internet. This is achieved with [Cloud NAT](https://cloud.google.com/nat/docs/overview).
+
+Thus, the resources representing the Cloud Router and the Cloud NAT Gateway are only necessary for as long as the deployment is using container registries other than Google's one.

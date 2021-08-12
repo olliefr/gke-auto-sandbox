@@ -94,3 +94,14 @@ resource "google_container_node_pool" "e2_medium_pool" {
     # TODO limited service_accounts for instances
   }
 }
+
+# See README.md for more information on why Cloud Router and
+# Cloud NAT Gateway are required in this specific demo.
+
+resource "google_compute_router" "router" {
+  name        = "prod-subnet-router"
+  network     = google_compute_network.gke.name
+  region      = var.region
+  project     = var.project
+  description = "Provides access to Docker Hub to the K8s nodes"
+}
