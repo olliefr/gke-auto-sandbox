@@ -75,6 +75,12 @@ resource "google_container_cluster" "prod" {
       display_name = var.authorized_networks[0].display_name
     }
   }
+
+  # Dataplane V2
+  # https://cloud.google.com/blog/products/containers-kubernetes/bringing-ebpf-and-cilium-to-google-kubernetes-engine
+  # https://cilium.io/blog/2020/08/19/google-chooses-cilium-for-gke-networking
+  # https://github.com/hashicorp/terraform-provider-google/issues/7207
+  datapath_provider = "ADVANCED_DATAPATH"
 }
 
 resource "google_container_node_pool" "e2_standard_pool" {
