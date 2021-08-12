@@ -1,0 +1,7 @@
+.terraform
+*.tfplan
+*.tfstate
+*.tfstate.backup
+
+# Project-specific configuration
+provider_google.auto.tfvars
