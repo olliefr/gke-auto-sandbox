@@ -99,7 +99,7 @@ resource "google_container_node_pool" "e2_standard_pool" {
     preemptible  = var.preemptible
     machine_type = "e2-standard-2"
     image_type   = "COS_CONTAINERD"
-		disk_size_gb = "12"
+    disk_size_gb = "12"
 
     # TODO limited service_accounts for instances
   }
