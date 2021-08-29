@@ -3,9 +3,9 @@ terraform {
 }
 
 provider "google" {
-	project = var.project
-	region  = var.region
-	zone    = var.zone
+  project = var.project
+  region  = var.region
+  zone    = var.zone
 }
 
 resource "google_project_service" "compute" {
@@ -88,9 +88,9 @@ resource "google_container_cluster" "prod" {
 }
 
 resource "google_container_node_pool" "e2_standard_pool" {
-	cluster            = google_container_cluster.prod.name
-	location           = google_container_cluster.prod.location
-	name               = "e2-standard-pool"
+  cluster            = google_container_cluster.prod.name
+  location           = google_container_cluster.prod.location
+  name               = "e2-standard-pool"
   
   # In regional or multi-zonal clusters, number of nodes per zone
   node_count         = 1
