@@ -41,7 +41,7 @@ Example of an object:
 }
 ```
 
-To find your external IP use `dig +short myip.opendns.com @resolver1.opendns.com`
+To find your external IP use `dig -4 TXT +short o-o.myaddr.l.google.com @ns1.google.com`
 
 The value set fo the following variable is applied at the GKE cluster node pool level.
 
