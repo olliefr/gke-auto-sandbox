@@ -1,24 +1,51 @@
-# GKE set-up for microservices demo
+# Quickly provision a GKE cluster using Terraform
 
-This is an example infrastructure for Google Cloud Platform's [microservices-demo]. Unofficial, obviously.
+I use this module every time I want to quickly spin up a Google Kubernetes Engine cluster for experimentation.
 
-Once the infrastructure is provisioned with Terraform, a custom hardened deployment of `microservices-demo` is performed.
+## Architecture
 
-For the deployment manifests and supporting information, see TODO repository.
+The GKE cluster provisioned by this module
 
-## Terraform backend
-
-This project is a foundation for the technical demo of a secure Kubernetes deployment.
-As such, its focus is not on establishing a production-grade Terraform pipeline.
-So it is using the [`local`](https://www.terraform.io/docs/language/settings/backends/local.html) Terraform backend.
+* is [VPC-native](https://cloud.google.com/kubernetes-engine/docs/concepts/alias-ips) as it uses alias IP address ranges;
+* is _private_ as the nodes do not have public IP addresses;
+* is _regional_ as the control nodes are allocated in multiple zones;
+* is _multi-zonal_ as the nodes are allocated in multiple zones;
+* has _public endpoint_ with a _list of authorised control networks_;
+* has [Dataplane V2](https://cloud.google.com/blog/products/containers-kubernetes/bringing-ebpf-and-cilium-to-google-kubernetes-engine) enabled so can enforce Network Policies;
+* uses pre-emptible worker nodes to save money.
 
 ## Requirements
 
-Deploying the infrastructure defined in this repository requires:
+You must have a Google Cloud Platform project with billing enabled.
 
-* a Google Cloud Platform project with billing enabled;
+## Quick start
 
-## Mandatory variables
+Checkout the repo and create a configuration file `env.auto.tfvars` with the following content.
+
+```hcl
+project = "???"
+region  = "europe-west2"
+zone    = "europe-west2-a"
+
+authorized_networks = [{
+  cidr_block   = "0.0.0.0/0"
+  display_name = "warning-publicly-accessible-endpoint"
+}]
+```
+
+* You _must_ change the `project` name;
+* You _may_ change `region` and `zone` to your preferred ones;
+* You are _encouraged_ to update the `authorized_networks` list to restrict access to your cluster's end-point.
+
+Now you can run `terraform init`, followed by `terraform plan`.
+
+Enjoy! :shipit:
+
+## Configuration
+
+A more in-depth look at this module's configuration options.
+
+### Mandatory variables
 
 The values set for the following variables are applied at Terraform Google provider level.
 
@@ -26,46 +53,22 @@ The values set for the following variables are applied at Terraform Google provi
 * `region`
 * `zone`
 
-## Recommended variables
+### Recommended variables
 
-The value set for the following variable is applied at the GKE cluster resource level.
+* `authorized_networks` is the list of objects representing CIDR blocks allowed to access the cluster's "public" endpoint.
+   
+   ❗ Default is `[]`, which means no access. Check out the _Quick start_ section for a more permissive example. 
 
-* `authorized_networks` is the list of authorized control networks for the GKE cluster. Default is `[]`, which means no access. Each network is represented by an object.
-
-Example of an object:
-
-```hcl
-{
-	cidr_block:   "127.0.0.1/32"
-	display_name: "This would obviously not work"
-}
-```
-
-To find your external IP use `dig -4 TXT +short o-o.myaddr.l.google.com @ns1.google.com`
-
-The value set fo the following variable is applied at the GKE cluster node pool level.
+   To find your external IP, run `dig -4 TXT +short o-o.myaddr.l.google.com @ns1.google.com`
 
 * `preemptible` is for provisioning preemptible VM instances for GKE nodes. Default is `true`.
 
-## Architecture
+### Cloud Router and Cloud NAT Gateway
 
-A GKE cluster and supporting infrastructure is provisioned, subject to the following.
+The nodes with private IP addresses are given outbound access to the Internet via a Cloud NAT Gateway in order to make possible deployments from container registries other than Google's own.
 
-The GKE cluster:
+## Example deployment
 
-* is [VPC-native](https://cloud.google.com/kubernetes-engine/docs/concepts/alias-ips) as it uses alias IP address ranges;
-* is _private_ as the nodes do not have public IP addresses;
-* is _regional_ as the control nodes are allocated in multiple zones;
-* is _multi-zonal_ as the nodes are allocated in multiple zones;
-* has _public endpoint_ with a _list of authorised control networks_;
-* has [Dataplane V2](https://cloud.google.com/blog/products/containers-kubernetes/bringing-ebpf-and-cilium-to-google-kubernetes-engine) enabled so can enforce Network Policies.
+Once the infrastructure is provisioned with Terraform, you can deploy Google's `microservices-demo` application.
 
-**!!** The worker nodes are pre-emptible by default to save money.
-
-## Cloud Router and Cloud NAT Gateway
-
-The nature of the microservices demo that is going to be deployed into this cluster requires it pulling a Docker image from Docker Hub. 
-
-Unlike Google Container Registry, the Docker Hub is not part of the Google network. Therefore, to pull an image, the node must have outbound access to the internet. This is achieved with [Cloud NAT](https://cloud.google.com/nat/docs/overview).
-
-Thus, the resources representing the Cloud Router and the Cloud NAT Gateway are only necessary for as long as the deployment is using container registries other than Google's one.
+For my custom, hardened, version of deployment manifests and supporting information, see TODO repository.
