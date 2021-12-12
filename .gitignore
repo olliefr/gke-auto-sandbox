@@ -1,7 +1,6 @@
 .terraform
-*.tfplan
-*.tfstate
-*.tfstate.backup
+*.tfplan*
+*.tfstate*
 
 # Global environment configuration
 env.auto.tfvars
