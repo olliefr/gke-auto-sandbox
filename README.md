@@ -10,7 +10,7 @@ The GKE cluster provisioned by this module
 * is _private_ as the nodes do not have public IP addresses;
 * is _regional_ as the control nodes are allocated in multiple zones;
 * is _multi-zonal_ as the nodes are allocated in multiple zones;
-* has _public endpoint_ with a _list of authorised control networks_;
+* has a _public endpoint_ with access limited to the _list of authorised control networks_;
 * has [Dataplane V2](https://cloud.google.com/blog/products/containers-kubernetes/bringing-ebpf-and-cilium-to-google-kubernetes-engine) enabled so can enforce Network Policies;
 * uses pre-emptible worker nodes to save money.
 
@@ -27,10 +27,12 @@ project = "???"
 region  = "europe-west2"
 zone    = "europe-west2-a"
 
-authorized_networks = [{
-  cidr_block   = "0.0.0.0/0"
-  display_name = "warning-publicly-accessible-endpoint"
-}]
+authorized_networks = [
+  {
+    cidr_block   = "0.0.0.0/0"
+    display_name = "warning-publicly-accessible-endpoint"
+  },
+]
 ```
 
 * You _must_ change the `project` name;

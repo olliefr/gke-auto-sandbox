@@ -68,11 +68,13 @@ resource "google_container_cluster" "prod" {
     }
   }
 
-  # TODO update to support multiple authorised networks
   master_authorized_networks_config {
-    cidr_blocks {
-      cidr_block   = var.authorized_networks[0].cidr_block
-      display_name = var.authorized_networks[0].display_name
+    dynamic "cidr_blocks" {
+      for_each = var.authorized_networks
+      content {
+        cidr_block   = cidr_blocks.value.cidr_block
+        display_name = cidr_blocks.value.display_name
+      }
     }
   }
 
