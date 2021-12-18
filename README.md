@@ -2,21 +2,30 @@
 
 I use this module every time I want to quickly spin up a Google Kubernetes Engine cluster for experimentation.
 
+**TODO** Replace [preemptible VMs] with [spot VMs].
+
 ## Architecture
 
-The GKE cluster provisioned by this module
+* The cluster is [VPC-native](https://cloud.google.com/kubernetes-engine/docs/concepts/alias-ips) as it uses alias IP address ranges;
+* It is a [private cluster], that is its worker nodes do not have public IP addresses;
+* It is _regional_ as the control nodes are allocated in multiple zones;
+* It is _multi-zonal_ as the nodes are allocated in multiple zones;
+* It has a _public endpoint_ with access limited to the _list of authorised control networks_;
+* It has [Dataplane V2](https://cloud.google.com/blog/products/containers-kubernetes/bringing-ebpf-and-cilium-to-google-kubernetes-engine) enabled so it can enforce Network Policies;
+* It uses [preemptible VMs] for worker nodes. This reduces the running cost substantially;
+* The worker nodes' outbound Internet access is via [Cloud NAT].
 
-* is [VPC-native](https://cloud.google.com/kubernetes-engine/docs/concepts/alias-ips) as it uses alias IP address ranges;
-* is _private_ as the nodes do not have public IP addresses;
-* is _regional_ as the control nodes are allocated in multiple zones;
-* is _multi-zonal_ as the nodes are allocated in multiple zones;
-* has a _public endpoint_ with access limited to the _list of authorised control networks_;
-* has [Dataplane V2](https://cloud.google.com/blog/products/containers-kubernetes/bringing-ebpf-and-cilium-to-google-kubernetes-engine) enabled so can enforce Network Policies;
-* uses pre-emptible worker nodes to save money.
+[Cloud NAT]: https://cloud.google.com/nat/
+[private cluster]: https://cloud.google.com/kubernetes-engine/docs/concepts/private-cluster-concept
+[preemptible VMs]: https://cloud.google.com/compute/docs/instances/preemptible
+[spot VMs]: https://cloud.google.com/compute/docs/instances/spot
 
 ## Requirements
 
-You must have a Google Cloud Platform project with billing enabled.
+* You must have been granted `Owner` role on some existing *project*;
+* The project must be linked to a [Cloud Billing account].
+
+[Cloud Billing account]: https://cloud.google.com/billing/docs/concepts#billing_account
 
 ## Quick start
 
@@ -39,9 +48,7 @@ authorized_networks = [
 * You _may_ change `region` and `zone` to your preferred ones;
 * You are _encouraged_ to update the `authorized_networks` list to restrict access to your cluster's end-point.
 
-Now you can run `terraform init`, followed by `terraform plan`.
-
-Enjoy! :shipit:
+Now you can deploy with Terraform (`init` ... `plan` ... `apply`). Enjoy! :shipit:
 
 ## Configuration
 
