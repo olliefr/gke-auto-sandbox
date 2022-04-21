@@ -78,6 +78,10 @@ The nodes with private IP addresses are given outbound access to the Internet vi
 
 ## Example deployment
 
-Once the infrastructure is provisioned with Terraform, you can deploy Google's `microservices-demo` application.
+Once the infrastructure is provisioned with Terraform, you can deploy an example workload.
 
-For my custom, hardened, version of deployment manifests and supporting information, see TODO repository.
+* _Online Boutique_ application by Google: [GoogleCloudPlatform/microservices-demo]
+* My custom, hardened, version of deployment manifests: [olliefr/gke-microservices-demo]
+
+[GoogleCloudPlatform/microservices-demo]: https://github.com/GoogleCloudPlatform/microservices-demo
+[olliefr/gke-microservices-demo]: https://github.com/olliefr/gke-microservices-demo
