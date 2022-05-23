@@ -1,31 +1,31 @@
-# See README.md for more information on the input variables.
-
 variable "project" {
-  description = "GCP project ID to deploy resources into. Set at Google provider level."
+  description = "The project ID to deploy the cluster into. Must be linked to a billing account."
   type        = string
 }
 
 variable "region" {
-  description = "GCP region to deploy resources into. Set at Google provider level."
+  description = "GCP region to deploy the resources into."
   type        = string
+  default     = "europe-west2"
 }
 
 variable "zone" {
-  description = "GCP zone to deploy resources into. Set at Google provider level."
+  description = "GCP zone to deploy the resources into."
   type        = string
+  default     = "europe-west2-a"
 }
 
 variable "authorized_networks" {
-  description = "Access to the GKE public endpoint is restricted to the IP address ranges from this list."
-  type        = list(object({
-    cidr_block:   string
-    display_name: string
+  description = "The CIDR blocks allowed to access the cluster control plane."
+  type = list(object({
+    cidr_block : string
+    display_name : string
   }))
-  default     = []
+  default = []
 }
 
 variable "preemptible" {
-  description = "Whether to use preemptible VM instances for the GKE cluster node pool. True by default."
+  description = "Should GKE cluster nodes be preemptible VM instances? Default is true."
   type        = bool
   default     = true
 }

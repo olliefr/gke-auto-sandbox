@@ -1,9 +1,15 @@
+# The intent is to lock Terraform to minor version 1.1,
+# and the providers to their latest minor versions.
 terraform {
-  required_version = "~> 1.0.10"
+  required_version = "~> 1.1.0"
   required_providers {
     google = {
       source  = "hashicorp/google"
       version = "~> 4.4"
+    }
+    null = {
+      source  = "hashicorp/null"
+      version = "~> 3.1"
     }
   }
 }
@@ -14,59 +20,148 @@ provider "google" {
   zone    = var.zone
 }
 
+# TODO split into different .tf files: versions, iam, services, network, cluster
+# TODO GCP resource names could be better
+# TODO review features https://cloud.google.com/kubernetes-engine/docs/concepts/autopilot-overview
+
+# Service Usage API (serviceusage.googleapis.com) must be enabled
+# on the project to enable the services.
+
+# Cloud Resource Manager API
+resource "google_project_service" "cloudresourcemanager" {
+  service = "cloudresourcemanager.googleapis.com"
+}
+
+# Compute Engine API
 resource "google_project_service" "compute" {
   service = "compute.googleapis.com"
 }
 
+# Kubernetes Engine API
 resource "google_project_service" "container" {
   service = "container.googleapis.com"
 }
 
-resource "google_compute_network" "gke" {
-  name                    = "gkenet"
+# Cloud Logging API
+resource "google_project_service" "logging" {
+  service = "logging.googleapis.com"
+}
+
+# Stackdriver Monitoring API
+resource "google_project_service" "monitoring" {
+  service = "monitoring.googleapis.com"
+}
+
+# TODO enable audit log entries for selected APIs
+# https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/google_project_iam#google_project_iam_audit_config
+
+# Least privilege service account for GKE nodes
+resource "google_service_account" "gke_node" {
+  account_id  = "sa-gke-node"
+  description = "GKE nodes"
+}
+
+# Creation of service accounts is eventually consistent,
+# and that can lead to errors when you try to apply ACLs
+# to service accounts immediately after creation.
+resource "null_resource" "delay" {
+  provisioner "local-exec" {
+    command = "sleep 10"
+  }
+  triggers = {
+    "sa_gke_node" = google_service_account.gke_node.id
+  }
+}
+
+# Role assignment for the least privilege GKE node service account
+# https://cloud.google.com/kubernetes-engine/docs/how-to/hardening-your-cluster#use_least_privilege_sa
+
+resource "google_project_iam_member" "monitoring_viewer--sa_gke_node" {
+  project    = var.project
+  role       = "roles/monitoring.viewer"
+  member     = "serviceAccount:${google_service_account.gke_node.email}"
+  depends_on = [google_service_account.gke_node]
+}
+resource "google_project_iam_member" "monitoring_metric_writer--sa_gke_node" {
+  project    = var.project
+  role       = "roles/monitoring.metricWriter"
+  member     = "serviceAccount:${google_service_account.gke_node.email}"
+  depends_on = [google_service_account.gke_node]
+}
+resource "google_project_iam_member" "log_writer--sa_gke_node" {
+  project    = var.project
+  role       = "roles/logging.logWriter"
+  member     = "serviceAccount:${google_service_account.gke_node.email}"
+  depends_on = [google_service_account.gke_node]
+}
+resource "google_project_iam_member" "stackdriver_resource_metadata_writer--sa_gke_node" {
+  project    = var.project
+  role       = "roles/stackdriver.resourceMetadata.writer"
+  member     = "serviceAccount:${google_service_account.gke_node.email}"
+  depends_on = [google_service_account.gke_node]
+}
+
+resource "google_compute_network" "custom" {
+  name                    = "cluster-net"
   auto_create_subnetworks = false
 }
 
 # TODO make node, pod, services IP ranges variables
+# TODO add outputs to display max node, max pods, max services (computed)
 
 resource "google_compute_subnetwork" "prod" {
-  network       = google_compute_network.gke.id
-  name          = "prod"
-  ip_cidr_range = "10.0.0.0/16"
-  
+  network                  = google_compute_network.custom.id
+  name                     = "prod"
   private_ip_google_access = true
 
+  ip_cidr_range = "10.0.0.0/16"
+
   secondary_ip_range {
-    range_name    = "pod-ranges"
+    range_name    = "pod-range"
     ip_cidr_range = "10.1.0.0/16"
   }
 
   secondary_ip_range {
-    range_name    = "services-range"
+    range_name    = "service-range"
     ip_cidr_range = "10.2.0.0/16"
   }
 }
 
 resource "google_container_cluster" "prod" {
-  location                 = var.region
   name                     = "prod"
   initial_node_count       = 1
   remove_default_node_pool = true
+  enable_shielded_nodes    = true
 
-  network    = google_compute_network.gke.id
+  # TODO make k8s version optional variable
+  # TODO make release channel optional variable
+  release_channel {
+    # channel is one of {UNSPECIFIED, RAPID, REGULAR, STABLE}
+    channel = "RAPID"
+  }
+
+  workload_identity_config {
+    workload_pool = "${var.project}.svc.id.goog"
+  }
+
+  # The location argument determines cluster availability type (regional/zonal)
+  location = var.region
+
+  network    = google_compute_network.custom.id
   subnetwork = google_compute_subnetwork.prod.id
 
   ip_allocation_policy {
-    cluster_secondary_range_name  = "services-range"
-    services_secondary_range_name = "pod-ranges"
+    cluster_secondary_range_name  = "pod-range"
+    services_secondary_range_name = "service-range"
   }
 
-  # TODO private endpoint
-  # TODO variable for master_ipv4_cidr_block
-
   private_cluster_config {
-    enable_private_nodes    = true
-    master_ipv4_cidr_block  = "172.16.0.0/28"
+    enable_private_nodes = true
+
+    # TODO variable for master_ipv4_cidr_block
+    master_ipv4_cidr_block = "172.16.0.0/28"
+
+    # TODO variable for private endpoint (would disable public endpoint)
     enable_private_endpoint = false
 
     master_global_access_config {
@@ -96,12 +191,12 @@ resource "google_container_cluster" "prod" {
 }
 
 resource "google_container_node_pool" "e2_standard_pool" {
-  cluster            = google_container_cluster.prod.name
-  location           = google_container_cluster.prod.location
-  name               = "e2-standard-pool"
-  
+  cluster  = google_container_cluster.prod.name
+  location = google_container_cluster.prod.location
+  name     = "e2-standard-pool"
+
   # In regional or multi-zonal clusters, number of nodes per zone
-  node_count         = 1
+  node_count = 1
 
   node_config {
     preemptible  = var.preemptible
@@ -109,27 +204,34 @@ resource "google_container_node_pool" "e2_standard_pool" {
     image_type   = "COS_CONTAINERD"
     disk_size_gb = "12"
 
-    # TODO limited service_accounts for instances
+    # TODO disk too small, IOPS affected, increase
+
+    shielded_instance_config {
+      # Third-party unsigned kernel modules cannot be loaded when secure boot is enabled.
+      # Since we aren't using third-party unsigned kernel modules, we enable secure boot.
+      enable_secure_boot          = true
+      enable_integrity_monitoring = true
+    }
+
+    # Google recommends custom service accounts that have
+    # cloud-platform scope and permissions granted via IAM roles.
+    service_account = google_service_account.gke_node.email
+    oauth_scopes = [
+      "https://www.googleapis.com/auth/cloud-platform",
+    ]
   }
 }
 
-# See README.md for more information on why Cloud Router and
-# Cloud NAT Gateway are required in this specific demo.
-
+# NAT configuration for GKE node egress
 resource "google_compute_router" "router" {
   name        = "prod-subnet-router"
-  network     = google_compute_network.gke.name
-  region      = var.region
-  project     = var.project
-  description = "Provides access to Docker Hub to the K8s nodes"
+  network     = google_compute_network.custom.name
+  description = "Provides outbound Internet access to GKE private nodes"
 }
-
-# TODO investigate nat_ips = [] and drain_nat_ips = []
-
 resource "google_compute_router_nat" "nat" {
-  name    = "k8s-nodes-nat"
-  router  = google_compute_router.router.name
-  region  = google_compute_router.router.region
+  name   = "k8s-nodes-nat"
+  router = google_compute_router.router.name
+  region = google_compute_router.router.region
 
   nat_ip_allocate_option             = "AUTO_ONLY"
   source_subnetwork_ip_ranges_to_nat = "LIST_OF_SUBNETWORKS"
@@ -138,4 +240,6 @@ resource "google_compute_router_nat" "nat" {
     name                    = google_compute_subnetwork.prod.self_link
     source_ip_ranges_to_nat = ["PRIMARY_IP_RANGE"]
   }
+
+  # TODO investigate nat_ips = [] and drain_nat_ips = []
 }
