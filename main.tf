@@ -80,25 +80,25 @@ resource "google_project_iam_member" "monitoring_viewer--sa_gke_node" {
   project    = var.project
   role       = "roles/monitoring.viewer"
   member     = "serviceAccount:${google_service_account.gke_node.email}"
-  depends_on = [google_service_account.gke_node]
+  depends_on = [null_resource.delay]
 }
 resource "google_project_iam_member" "monitoring_metric_writer--sa_gke_node" {
   project    = var.project
   role       = "roles/monitoring.metricWriter"
   member     = "serviceAccount:${google_service_account.gke_node.email}"
-  depends_on = [google_service_account.gke_node]
+  depends_on = [null_resource.delay]
 }
 resource "google_project_iam_member" "log_writer--sa_gke_node" {
   project    = var.project
   role       = "roles/logging.logWriter"
   member     = "serviceAccount:${google_service_account.gke_node.email}"
-  depends_on = [google_service_account.gke_node]
+  depends_on = [null_resource.delay]
 }
 resource "google_project_iam_member" "stackdriver_resource_metadata_writer--sa_gke_node" {
   project    = var.project
   role       = "roles/stackdriver.resourceMetadata.writer"
   member     = "serviceAccount:${google_service_account.gke_node.email}"
-  depends_on = [google_service_account.gke_node]
+  depends_on = [null_resource.delay]
 }
 
 resource "google_compute_network" "custom" {
