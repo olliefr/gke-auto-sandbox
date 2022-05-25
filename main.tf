@@ -1,5 +1,3 @@
-# The intent is to lock Terraform to minor version 1.1,
-# and the providers to their latest minor versions.
 terraform {
   required_version = "~> 1.1.0"
   required_providers {
@@ -8,8 +6,8 @@ terraform {
       version = "~> 4.4"
     }
     null = {
-      source  = "hashicorp/null"
-      version = "~> 3.1"
+      source  = "hashicorp/time"
+      version = "~> 0.7"
     }
   }
 }
@@ -64,13 +62,9 @@ resource "google_service_account" "gke_node" {
 # Creation of service accounts is eventually consistent,
 # and that can lead to errors when you try to apply ACLs
 # to service accounts immediately after creation.
-resource "null_resource" "delay" {
-  provisioner "local-exec" {
-    command = "sleep 10"
-  }
-  triggers = {
-    "sa_gke_node" = google_service_account.gke_node.id
-  }
+resource "time_sleep" "delay" {
+  create_duration = "10s"
+  depends_on = [google_service_account.gke_node]
 }
 
 # Role assignment for the least privilege GKE node service account
@@ -80,25 +74,25 @@ resource "google_project_iam_member" "monitoring_viewer--sa_gke_node" {
   project    = var.project
   role       = "roles/monitoring.viewer"
   member     = "serviceAccount:${google_service_account.gke_node.email}"
-  depends_on = [null_resource.delay]
+  depends_on = [time_sleep.delay]
 }
 resource "google_project_iam_member" "monitoring_metric_writer--sa_gke_node" {
   project    = var.project
   role       = "roles/monitoring.metricWriter"
   member     = "serviceAccount:${google_service_account.gke_node.email}"
-  depends_on = [null_resource.delay]
+  depends_on = [time_sleep.delay]
 }
 resource "google_project_iam_member" "log_writer--sa_gke_node" {
   project    = var.project
   role       = "roles/logging.logWriter"
   member     = "serviceAccount:${google_service_account.gke_node.email}"
-  depends_on = [null_resource.delay]
+  depends_on = [time_sleep.delay]
 }
 resource "google_project_iam_member" "stackdriver_resource_metadata_writer--sa_gke_node" {
   project    = var.project
   role       = "roles/stackdriver.resourceMetadata.writer"
   member     = "serviceAccount:${google_service_account.gke_node.email}"
-  depends_on = [null_resource.delay]
+  depends_on = [time_sleep.delay]
 }
 
 resource "google_compute_network" "custom" {
