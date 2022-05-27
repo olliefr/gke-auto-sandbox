@@ -64,7 +64,7 @@ resource "google_service_account" "gke_node" {
 # to service accounts immediately after creation.
 resource "time_sleep" "delay" {
   create_duration = "10s"
-  depends_on = [google_service_account.gke_node]
+  depends_on      = [google_service_account.gke_node]
 }
 
 # Role assignment for the least privilege GKE node service account
@@ -103,10 +103,33 @@ resource "google_compute_network" "custom" {
 # TODO make node, pod, services IP ranges variables
 # TODO add outputs to display max node, max pods, max services (computed)
 
+variable "enable_flow_log" {
+  type     = bool
+  default  = true
+  nullable = false
+}
+
+variable "flow_log_config" {
+  default = {
+    aggregation_interval = "INTERVAL_5_SEC"
+    flow_sampling        = 0.5
+    metadata             = "INCLUDE_ALL_METADATA"
+  }
+}
+
 resource "google_compute_subnetwork" "prod" {
   network                  = google_compute_network.custom.id
   name                     = "prod"
   private_ip_google_access = true
+
+  dynamic "log_config" {
+    for_each = var.enable_flow_log ? [true] : []
+    content {
+      aggregation_interval = var.flow_log_config.aggregation_interval
+      flow_sampling        = var.flow_log_config.flow_sampling
+      metadata             = var.flow_log_config.metadata
+    }
+  }
 
   ip_cidr_range = "10.0.0.0/16"
 

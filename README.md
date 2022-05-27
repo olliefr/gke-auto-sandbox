@@ -1,6 +1,8 @@
 # Quickly provision a GKE cluster using Terraform
 
-I use this module every time I want to quickly spin up a Google Kubernetes Engine cluster for experimentation.
+I use this module for proof-of-concept, demo, lab, and other experimental yet realistic deployments of Google Kubernetes Engine.
+
+The general philosophy for the module is to follow best practices for production-grade deployments. Two important deviations are aggressive logging and telemetry collection, and preemptible nodes are used by default to reduce the cost.
 
 ## Architecture
 
@@ -13,22 +15,25 @@ Although this deployment is meant for proof-of-concept and experimental work, it
 * It has a _public endpoint_ with access limited to the _list of authorised control networks_;
 * It has [Dataplane V2](https://cloud.google.com/blog/products/containers-kubernetes/bringing-ebpf-and-cilium-to-google-kubernetes-engine) enabled so it can enforce Network Policies;
 * It uses [preemptible VMs] for worker nodes. This reduces the running cost substantially;
-* The worker nodes' outbound Internet access is via [Cloud NAT];
+* The worker nodes' outbound Internet access is via [Cloud NAT][^1];
+* [Cloud NAT] is enabled on the cluster subnet. This enables the cluster nodes' access to container registries located outside Google Cloud Platform; 
 * A [hardened node image with `containerd` runtime](https://cloud.google.com/kubernetes-engine/docs/concepts/using-containerd) is used;
 * The nodes use a user-managed [least privilege service account];
 * [Shielded GKE nodes] feature is enabled;
 * [Secure Boot] and [Integrity Monitoring] are enabled on cluster nodes;
 * The cluster is subscribed to _Rapid_ [release channel];
 * [Workload Identity] is supported;
+* [VPC Flow Logs] are enabled by default on the cluster's subnet;
 
 [least privilege service account]: https://cloud.google.com/kubernetes-engine/docs/how-to/hardening-your-cluster#use_least_privilege_sa
-[Cloud NAT]: https://cloud.google.com/nat/
+[Cloud NAT]: https://cloud.google.com/nat/docs/overview
 [private cluster]: https://cloud.google.com/kubernetes-engine/docs/concepts/private-cluster-concept
 [Shielded GKE nodes]: https://cloud.google.com/kubernetes-engine/docs/how-to/shielded-gke-nodes
 [release channel]:  https://cloud.google.com/kubernetes-engine/docs/concepts/release-channels
 [Secure Boot]: https://cloud.google.com/compute/shielded-vm/docs/shielded-vm#secure-boot
 [Integrity Monitoring]: https://cloud.google.com/compute/shielded-vm/docs/shielded-vm#integrity-monitoring
 [Workload Identity]: https://cloud.google.com/kubernetes-engine/docs/concepts/workload-identity
+[VPC Flow Logs]: https://cloud.google.com/vpc/docs/flow-logs
 
 ## Requirements
 
@@ -69,41 +74,30 @@ authorized_networks = [
 ]
 ```
 
-* You _must_ change the `project` name;
-* You _may_ change `region` and `zone` to your preferred ones;
-* You are _encouraged_ to update the `authorized_networks` list to restrict access to your cluster's end-point.
+* You _must_ set the `project` ID;
+* You _may_ change the `region` and `zone` to your preferred values;
+* You _should_ change the values in `authorized_networks` to only allow access from your CIDR blocks.
 
 Now you can deploy with Terraform (`init` ... `plan` ... `apply`). Enjoy! :shipit:
 
-## Configuration
+## Input variables
 
-A more in-depth look at this module's configuration options.
+A more in-depth look at this module's input variables.
 
-### Mandatory variables
-
-The values set for the following variables are applied at Terraform Google provider level.
-
-* `project` is the project ID.
-* `region`
-* `zone`
-
-### Recommended variables
-
-* `authorized_networks` is the list of objects representing CIDR blocks allowed to access the cluster's "public" endpoint.
+* `project` is the Google Cloud project resource ID.
+* (Optional) `region`
+* (Optional) `zone`
+* (Optional) `enable_flow_log`
+* (Optional) `preemptible`: use preemptible VM instances for cluster nodes? Default is `true`.
+* (Optional) `authorized_networks` is the list of objects representing CIDR blocks allowed to access the cluster's "public" endpoint.
    
    ❗ Default is `[]`, which means no access. Check out the _Quick start_ section for a more permissive example. 
 
-   To find your external IP, run `dig -4 TXT +short o-o.myaddr.l.google.com @ns1.google.com`
+   To find your public IP, run `dig -4 TXT +short o-o.myaddr.l.google.com @ns1.google.com`
 
-* `preemptible` is for provisioning preemptible VM instances for GKE nodes. Default is `true`.
+## Example workload
 
-### Cloud Router and Cloud NAT Gateway
-
-The nodes with private IP addresses are given outbound access to the Internet via a Cloud NAT Gateway in order to make possible deployments from container registries other than Google's own.
-
-## Example deployment
-
-Once the infrastructure is provisioned with Terraform, you can deploy an example workload.
+Once the infrastructure is provisioned with Terraform, you can deploy the example workload.
 
 * _Online Boutique_ application by Google: [GoogleCloudPlatform/microservices-demo]
 * My custom, hardened, version of deployment manifests: [olliefr/gke-microservices-demo]
