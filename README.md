@@ -32,10 +32,11 @@ Although this deployment is meant for proof-of-concept and experimental work, it
 
 ## Requirements
 
-* You must have the [necessary permissions](#required-permissions) on some existing *project*;
-* The project must be linked to a [Cloud Billing account].
+* [Terraform](https://www.terraform.io/) 1.1 or later. This module is Terraform Cloud compatible;
+* A Google Cloud project with the [necessary permissions](#required-permissions);
+* The project must be linked to a [billing account].
 
-[Cloud Billing account]: https://cloud.google.com/billing/docs/concepts#billing_account
+[billing account]: https://cloud.google.com/billing/docs/concepts#billing_account
 
 ### Required permissions
 
@@ -53,7 +54,7 @@ The `owner` basic role on the project would work. The `editor` might but I have 
 
 ## Quick start
 
-Checkout the repo and create a configuration file `env.auto.tfvars` with the following content.
+Clone the repo and create the variable definitions file `env.auto.tfvars` with the following content.
 
 ```hcl
 project = "???"
@@ -122,6 +123,7 @@ The following list is some ideas for future explorations.
 * Replace [preemptible VMs] with [spot VMs];
 * [Shared VPC] set-up;
 * [VPC Service Controls];
+* Enable [intranode visibility] on a cluster;
 * Set up [Config Connector] (or use [Config Controller]);
 * Explore [Cloud DNS for GKE] option;
 * IPv6 set-up;
@@ -136,7 +138,8 @@ The following list is some ideas for future explorations.
 [spot VMs]: https://cloud.google.com/compute/docs/instances/spot
 [Cloud DNS for GKE]: https://cloud.google.com/kubernetes-engine/docs/how-to/cloud-dns
 [Shared VPC]: https://cloud.google.com/vpc/docs/shared-vpc
-[VPC Service Controls]: https://cloud.google.com/vpc-service-controls/docs/overview 
+[VPC Service Controls]: https://cloud.google.com/vpc-service-controls/docs/overview
+[intranode visibility]: https://cloud.google.com/kubernetes-engine/docs/how-to/intranode-visibility
 [Config Connector]: https://cloud.google.com/config-connector/docs/overview
 [Config Controller]: https://cloud.google.com/anthos-config-management/docs/concepts/config-controller-overview
 [Anthos Service Mesh]: https://cloud.google.com/service-mesh/docs/overview
