@@ -100,8 +100,6 @@ resource "google_compute_network" "custom" {
   auto_create_subnetworks = false
 }
 
-# TODO add outputs to display max node, max pods, max services (computed)
-
 variable "enable_flow_log" {
   type     = bool
   default  = true
