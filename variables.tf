@@ -24,7 +24,12 @@ variable "authorized_networks" {
     cidr_block : string
     display_name : string
   }))
-  default  = []
+  default = [
+    {
+      cidr_block   = "0.0.0.0/0"
+      display_name = "warning-publicly-accessible-endpoint"
+    },
+  ]
   nullable = false
 }
 

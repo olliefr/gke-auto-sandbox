@@ -76,24 +76,27 @@ authorized_networks = [
 
 * You _must_ set the `project` ID;
 * You _may_ change the `region` and `zone` to your preferred values;
-* You _should_ change the values in `authorized_networks` to only allow access from your CIDR blocks.
+* You _should_ change the values in `authorized_networks` to only allow access from your approved CIDR blocks.
+
+❗ The default value for `authorized_networks` allows public access to the cluster endpoint. You still have to authenticate to perform any action, but it's not best practice to leave the control plane endpoint exposed to the world. So, adjust the `authorized_networks` accordingly.
+
+To find your public IP, you can run `dig -4 TXT +short o-o.myaddr.l.google.com @ns1.google.com`
 
 Now you can deploy with Terraform (`init` ... `plan` ... `apply`). Enjoy! :shipit:
 
 ## Input variables
 
-A more in-depth look at this module's input variables.
+This module accepts the following input variables.
 
 * `project` is the Google Cloud project resource ID.
 * (Optional) `region`
 * (Optional) `zone`
 * (Optional) `enable_flow_log`
 * (Optional) `preemptible`: use preemptible VM instances for cluster nodes? Default is `true`.
+* (Optional) `node_cidr_range`
+* (Optional) `pod_cidr_range`
+* (Optional) `service_cidr_range`
 * (Optional) `authorized_networks` is the list of objects representing CIDR blocks allowed to access the cluster's "public" endpoint.
-   
-   ❗ Default is `[]`, which means no access. Check out the _Quick start_ section for a more permissive example. 
-
-   To find your public IP, run `dig -4 TXT +short o-o.myaddr.l.google.com @ns1.google.com`
 
 ## Example workload
 
