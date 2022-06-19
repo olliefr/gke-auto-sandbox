@@ -7,3 +7,6 @@ env.auto.tfvars
 
 # Project-specific configuration
 provider_google.auto.tfvars
+
+# Other
+.idea/
