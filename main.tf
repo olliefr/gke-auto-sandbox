@@ -218,6 +218,17 @@ variable "max_pods_per_node" {
   nullable    = false
 }
 
+variable "release_channel" {
+  description = "Selected Kubernetes release channel. One of: {UNSPECIFIED, RAPID, REGULAR, STABLE}."
+  type        = string
+  default     = "RAPID"
+  nullable    = false
+  validation {
+    condition     = can(contains(["UNSPECIFIED", "RAPID", "REGULAR", "STABLE"], upper(var.release_channel)))
+    error_message = "The release_channel must be one of: UNSPECIFIED, RAPID, REGULAR, STABLE."
+  }
+}
+
 resource "google_container_cluster" "prod" {
   name                      = "prod"
   initial_node_count        = 1
@@ -226,10 +237,8 @@ resource "google_container_cluster" "prod" {
   default_max_pods_per_node = var.max_pods_per_node
 
   # TODO make k8s version optional variable
-  # TODO make release channel optional variable
   release_channel {
-    # channel is one of {UNSPECIFIED, RAPID, REGULAR, STABLE}
-    channel = "RAPID"
+    channel = var.release_channel
   }
 
   workload_identity_config {
