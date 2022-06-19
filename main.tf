@@ -229,6 +229,17 @@ variable "release_channel" {
   }
 }
 
+variable "availability_type" {
+  description = "The cluster availability type defines the control plane location as well as the default location for nodes. Values: 'regional' or 'zonal'. Default is 'zonal'."
+  type        = string
+  default     = "zonal"
+  nullable    = false
+  validation {
+    condition     = can(contains(["regional", "zonal"], lower(var.availability_type)))
+    error_message = "The location can be either 'regional' or 'zonal'."
+  }
+}
+
 resource "google_container_cluster" "prod" {
   name                      = "prod"
   initial_node_count        = 1
@@ -245,8 +256,8 @@ resource "google_container_cluster" "prod" {
     workload_pool = "${var.project}.svc.id.goog"
   }
 
-  # The location argument determines cluster availability type (regional/zonal)
-  location = var.region
+  # The location argument determines cluster availability type: regional or zonal.
+  location = var.availability_type
 
   network    = google_compute_network.custom.id
   subnetwork = google_compute_subnetwork.prod.id

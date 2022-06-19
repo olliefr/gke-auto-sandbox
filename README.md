@@ -10,7 +10,7 @@ Although this deployment is meant for proof-of-concept and experimental work, it
 
 * The cluster is [VPC-native](https://cloud.google.com/kubernetes-engine/docs/concepts/alias-ips) as it uses alias IP address ranges;
 * It is a [private cluster], that is its worker nodes do not have public IP addresses;
-* It is _regional_ as the control nodes are allocated in multiple zones;
+* The default availability type is _zonal_, but can be changed to _regional_;
 * It is _multi-zonal_ as the nodes are allocated in multiple zones;
 * It has a _public endpoint_ with access limited to the _list of authorised control networks_;
 * It has [Dataplane V2](https://cloud.google.com/blog/products/containers-kubernetes/bringing-ebpf-and-cilium-to-google-kubernetes-engine) enabled so it can enforce Network Policies;
@@ -89,14 +89,15 @@ Now you can deploy with Terraform (`init` ... `plan` ... `apply`). Enjoy! :shipi
 This module accepts the following input variables.
 
 * `project` is the Google Cloud project resource ID.
-* (Optional) `region`
-* (Optional) `zone`
-* (Optional) `enable_flow_log`
-* (Optional) `preemptible`: use preemptible VM instances for cluster nodes? Default is `true`.
+* (Optional) The default `region` for all resources.
+* (Optional) The default `zone` for all resources.
+* (Optional) Cluster `availability_type`: default is `zonal`. Other option is `regional`. Defines the control plane location, as well as the default location for worker nodes.
+* (Optional) VPC flow logs: `enable_flow_log`
+* (Optional) Use `preemptible` VM instances for cluster nodes. Default is `true`.
 * (Optional) `node_cidr_range`
 * (Optional) `pod_cidr_range`
 * (Optional) `service_cidr_range`
-* (Optional) `authorized_networks` is the list of objects representing CIDR blocks allowed to access the cluster's "public" endpoint.
+* (Optional) The list of `authorized_networks` representing CIDR blocks allowed to access the cluster's control plane.
 
 ## Example workload
 
