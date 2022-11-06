@@ -37,7 +37,9 @@ Although this deployment is meant for proof-of-concept and experimental work, it
 
 ## Requirements
 
-* [Terraform](https://www.terraform.io/) 1.3.4 or later. This module is Terraform Cloud compatible;
+<!-- TODO ideally you want the versions to be auto-generated (Terraform plus providers) -->
+
+* [Terraform](https://www.terraform.io/) 1.3.4 or later.
 * A Google Cloud project with the [necessary permissions](#required-permissions);
 * The project must be linked to a [billing account].
 
