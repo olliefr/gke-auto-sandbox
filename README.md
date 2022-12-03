@@ -49,6 +49,10 @@ Although this deployment is meant for proof-of-concept and experimental work, it
 
 The `owner` basic role on the project would work. The `editor` might but I have not tested it. 
 
+<!--
+The operator must have the permissions to enable new services, create service accounts, set IAM bindings at project level.
+-->
+
 **Alternatively**, the following roles are required at project level.
 
 * Kubernetes Engine Admin (`roles/container.admin`)
@@ -67,6 +71,7 @@ Clone the repo and create the variable definitions file `env.auto.tfvars` with t
 project = "???"
 region  = "europe-west2"
 zone    = "europe-west2-a"
+location = "europe-west2"
 
 authorized_networks = [
   {
@@ -110,6 +115,38 @@ Once the infrastructure is provisioned with Terraform, you can deploy the exampl
 
 [GoogleCloudPlatform/microservices-demo]: https://github.com/GoogleCloudPlatform/microservices-demo
 [olliefr/gke-microservices-demo]: https://github.com/olliefr/gke-microservices-demo
+
+## Code structure
+
+```
+# Right now, all Terraform resources in this module are created with the ADC credentials.
+# That would normally be the user credentials - the operator running terraform.
+# You could override this when running Terraform and ask it to impersonate a (limited) service account, instead.
+# But which service account? How does it get created and given the correct roles?
+# I propose the following flow:
+# - Create the SA and give it the necessary roles using an instance of Google provider with ADC (user) credentials.
+# - Create the resources for this module by impersonating that SA via a second instance of the Google provider.
+# This way, a powerful user (Owner or Editor), would not miss any required roles when creating the resources.
+# Inspiration: https://cloud.google.com/blog/topics/developers-practitioners/using-google-cloud-service-account-impersonation-your-terraform-code
+
+# TODO split the module into different .tf files:
+# 000-versions: Terraform and provider versions and configuration
+# 010-deploy-sa: create a locked down service account and assign necessary roles for it to deploy the rest
+# 020-services: enable required Google Cloud services (APIs)
+# 030-node-sa: create a service account for GKE nodes and assign it the right roles
+# 040-network: create a VPC, a subnet, and configure network and firewall logs.
+# 050-nat: resources that provide NAT functionality to cluster nodes with private IP addresses.
+# 060-cluster: create a GKE Standard cluster and a node pool
+
+# TODO add a description (maybe a diagram or a table to README) with the above info.
+
+# TODO review features https://cloud.google.com/kubernetes-engine/docs/concepts/autopilot-overview
+
+# TODO enable audit log entries for selected APIs
+# https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/google_project_iam#google_project_iam_audit_config
+
+# TODO add moar Terraform outputs to give a decent summary of what the cluster is about (CIDR ranges, etc)
+```
 
 ## Future work
 
