@@ -1,8 +1,27 @@
 # Quickly provision a GKE cluster using Terraform
 
-I use this module for proof-of-concept, demo, lab, and other experimental yet realistic deployments of Google Kubernetes Engine.
+* **Project State: Prototyping**
+* For more information on project states and SLAs, see [this documentation](https://github.com/chef/chef-oss-practices/blob/d4333c01570eae69f65470d58ed9d251c2e552a3/repo-management/repo-states.md).
 
-The general philosophy for the module is to follow best practices for production-grade deployments. Two important deviations are aggressive logging and telemetry collection, and preemptible nodes are used by default to reduce the cost.
+This is my sandbox for [Google Kubernetes Engine](https://cloud.google.com/kubernetes-engine) (GKE). 
+
+It's a weird one &ndash; on the one hand, I am to follow best practices and keep it as "production-ready" as my skill level and experience allows. On the other hand, *this is a sandbox* for experimentation and demos, not a production system. Thus some aspects of it are configured differently from what you'd expect to see in a production system.
+
+The most imporant deviations from a "production-grade" system are:
+
+* *Aggressive approach to collecting logging and monitoring data* makes running this infrastructure costlier than it might have been otherwise;
+* *Preemptible nodes are used by default* to reduce the cost;
+* *The cluster and all other Google Cloud assets are deployed from this single Terraform module*, increasing the blast radius.
+
+Which are all acceptable trade-offs for my use case. And it's quite fun to play with.
+
+# Useful resources
+
+These resources are useful for increasing one's awareness of what is considered "best practice" when it comes to GKE.
+
+* [Best practices for GKE networking](https://cloud.google.com/kubernetes-engine/docs/best-practices/networking)
+* [Harden your cluster's security](https://cloud.google.com/kubernetes-engine/docs/how-to/hardening-your-cluster)
+* [Best practices for running cost-optimized Kubernetes applications on GKE](https://cloud.google.com/architecture/best-practices-for-running-cost-effective-kubernetes-applications-on-gke). Includes a great [summary](https://cloud.google.com/architecture/best-practices-for-running-cost-effective-kubernetes-applications-on-gke#summary_of_best_practices) checklist.
 
 ## Architecture
 
