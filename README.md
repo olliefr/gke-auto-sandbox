@@ -1,11 +1,11 @@
-# Quickly provision a GKE cluster using Terraform
+# Google Kubernetes Engine (GKE) sandbox
 
 * **Project State: Prototyping**
 * For more information on project states and SLAs, see [this documentation](https://github.com/chef/chef-oss-practices/blob/d4333c01570eae69f65470d58ed9d251c2e552a3/repo-management/repo-states.md).
 
 This is my sandbox for [Google Kubernetes Engine](https://cloud.google.com/kubernetes-engine) (GKE). 
 
-It's a weird one &ndash; on the one hand, I am to follow best practices and keep it as "production-ready" as my skill level and experience allows. On the other hand, *this is a sandbox* for experimentation and demos, not a production system. Thus some aspects of it are configured differently from what you'd expect to see in a production system.
+It's a weird one &ndash; on the one hand, I aim to follow best practices and keep it as "production-ready" as my skill level and experience allows. On the other hand, *this is a sandbox* for experimentation and demos, not a production system. Thus some aspects of it are configured differently from what you'd expect to see in a production system.
 
 The most imporant deviations from a "production-grade" system are:
 
