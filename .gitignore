@@ -1,5 +1,5 @@
 .terraform
-*.tfplan*
+*tfplan*
 *.tfstate*
 
 # Global environment configuration
