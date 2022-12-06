@@ -9,9 +9,10 @@ It's a weird one &ndash; on the one hand, I aim to follow best practices and kee
 
 The most imporant deviations from a "production-grade" system are:
 
-* *Aggressive approach to collecting logging and monitoring data* makes running this infrastructure costlier than it might have been otherwise;
-* *Preemptible nodes are used by default* to reduce the cost;
-* *The cluster and all other Google Cloud assets are deployed from this single Terraform module*, increasing the blast radius.
+* Logging and monitoring data production is well above default levels.
+* [Preemptible VM instances](https://cloud.google.com/compute/docs/instances/preemptible) are used for cluster nodes by default.
+* Terraform: all Google Cloud assets are deployed from a single Terraform module.
+* Terraform: very recent versions of Terraform and its providers are used.
 
 Which are all acceptable trade-offs for my use case. And it's quite fun to play with.
 
