@@ -13,6 +13,7 @@ The most imporant deviations from a "production-grade" system are:
 * [Preemptible VM instances](https://cloud.google.com/compute/docs/instances/preemptible) are used for cluster nodes by default.
 * Terraform: all Google Cloud assets are deployed from a single Terraform module.
 * Terraform: very recent versions of Terraform and its providers are used.
+* Terraform: some input variables are not validated.
 
 Which are all acceptable trade-offs for my use case. And it's quite fun to play with.
 
@@ -60,7 +61,7 @@ Although this deployment is meant for proof-of-concept and experimental work, it
 <!-- TODO ideally you want the versions to be auto-generated (Terraform plus providers) -->
 
 * [Terraform](https://www.terraform.io/) 1.3.4 or later.
-* A Google Cloud project with the [necessary permissions](#required-permissions);
+* A Google Cloud project with the [necessary permissions](#required-permissions) granted to you;
 * The project must be linked to a [billing account].
 
 [billing account]: https://cloud.google.com/billing/docs/concepts#billing_account
@@ -90,7 +91,6 @@ Clone the repo and create the variable definitions file `env.auto.tfvars` with t
 ```hcl
 project = "???"
 region  = "europe-west2"
-zone    = "europe-west2-a"
 location = "europe-west2"
 
 authorized_networks = [
@@ -102,7 +102,7 @@ authorized_networks = [
 ```
 
 * You _must_ set the `project` ID;
-* You _may_ change the `region` and `zone` to your preferred values;
+* You _may_ change the `region` to your preferred values;
 * You _should_ change the values in `authorized_networks` to only allow access from your approved CIDR blocks.
 
 ❗ The default value for `authorized_networks` allows public access to the cluster endpoint. You still have to authenticate to perform any action, but it's not best practice to leave the control plane endpoint exposed to the world. So, adjust the `authorized_networks` accordingly.
@@ -117,7 +117,6 @@ This module accepts the following input variables.
 
 * `project` is the Google Cloud project resource ID.
 * (Optional) The default `region` for all resources.
-* (Optional) The default `zone` for all resources.
 * (Optional) Cluster `availability_type`: default is `zonal`. Other option is `regional`. Defines the control plane location, as well as the default location for worker nodes.
 * (Optional) VPC flow logs: `enable_flow_log`
 * (Optional) Use `preemptible` VM instances for cluster nodes. Default is `true`.
@@ -131,41 +130,52 @@ This module accepts the following input variables.
 Once the infrastructure is provisioned with Terraform, you can deploy the example workload.
 
 * _Online Boutique_ application by Google: [GoogleCloudPlatform/microservices-demo]
-* My custom, hardened, version of deployment manifests: [olliefr/gke-microservices-demo]
+* **out-of-date** My custom, hardened, version of deployment manifests: [olliefr/gke-microservices-demo]
 
 [GoogleCloudPlatform/microservices-demo]: https://github.com/GoogleCloudPlatform/microservices-demo
 [olliefr/gke-microservices-demo]: https://github.com/olliefr/gke-microservices-demo
 
 ## Code structure
 
-```
-# Right now, all Terraform resources in this module are created with the ADC credentials.
-# That would normally be the user credentials - the operator running terraform.
-# You could override this when running Terraform and ask it to impersonate a (limited) service account, instead.
-# But which service account? How does it get created and given the correct roles?
-# I propose the following flow:
-# - Create the SA and give it the necessary roles using an instance of Google provider with ADC (user) credentials.
-# - Create the resources for this module by impersonating that SA via a second instance of the Google provider.
-# This way, a powerful user (Owner or Editor), would not miss any required roles when creating the resources.
-# Inspiration: https://cloud.google.com/blog/topics/developers-practitioners/using-google-cloud-service-account-impersonation-your-terraform-code
+This module runs in two stages, using two (aliased) instances of Terraform Google provider.
 
-# TODO split the module into different .tf files:
+The first stage, named the _seed_, is self-contained in `010-seed.tf`. It runs with user
+credentials via ADC and sets up the foundation for the deployment that follows. The required
+services are enabled at this stage, and a least privilege IAM service account is provisioned
+and configured. At the end of the seed stage, a second instance of Terraform Google provider
+is initialised with the service account's credentials.
+
+The following stage deploys the cluster resources using service account impersonation.
+
+This deployment architecture serves three aims:
+
+* Short feedback loop. Everything is contained in a single Terraform module so is 
+  simple to deploy and update.
+* Deploying using a least privilege service account. This reduces the risk of 
+  hitting a permission error on deployment into "production", which is usually done
+  by a locked-down service account, as compared to deployment into "development" environment,
+  which was done with user's Google account identity that usually has very broad permissions
+  on the project (`Owner` or `Editor`). [Inspiration](https://cloud.google.com/blog/topics/developers-practitioners/using-google-cloud-service-account-impersonation-your-terraform-code).
+* The module can be used with "long-life" Google Cloud projects that are "repurposed" from one
+  experiment to another. The explicit declaration of dependencies, where it was necessary, allows
+  Terraform to destroy the resources in the right order, when requested. 
+
+```
 # 000-versions: Terraform and provider versions and configuration
-# 010-deploy-sa: create a locked down service account and assign necessary roles for it to deploy the rest
-# 020-services: enable required Google Cloud services (APIs)
-# 030-node-sa: create a service account for GKE nodes and assign it the right roles
+# 010-seed: configure the project and provision a least privilege service account for deploying the cluster
+# 030-cluster-node-sa: provision and configure a least privilege service account for cluster nodes
 # 040-network: create a VPC, a subnet, and configure network and firewall logs.
 # 050-nat: resources that provide NAT functionality to cluster nodes with private IP addresses.
-# 060-cluster: create a GKE Standard cluster and a node pool
+# 060-cluster: create a GKE cluster (Standard)
+```
 
-# TODO add a description (maybe a diagram or a table to README) with the above info.
+```
+TODO enable audit log entries for used APIs:
+https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/google_project_iam#google_project_iam_audit_config
+```
 
-# TODO review features https://cloud.google.com/kubernetes-engine/docs/concepts/autopilot-overview
-
-# TODO enable audit log entries for selected APIs
-# https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/google_project_iam#google_project_iam_audit_config
-
-# TODO add moar Terraform outputs to give a decent summary of what the cluster is about (CIDR ranges, etc)
+```
+TODO add moar Terraform outputs to give a decent summary of what the cluster is about (CIDR ranges, etc)
 ```
 
 ## Future work

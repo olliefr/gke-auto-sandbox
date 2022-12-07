@@ -54,7 +54,7 @@ resource "google_container_cluster" "prod" {
 
   # The default node pool will use the default Compute Engine service account, unless instructed otherwise.
   node_config {
-    service_account = google_service_account.gke_node.email
+    service_account = google_service_account.gke_node_service_account.email
   }
 
   # TODO make k8s version optional variable
@@ -137,7 +137,7 @@ resource "google_container_node_pool" "e2_standard_pool" {
 
     # Google recommends custom service accounts that have
     # cloud-platform scope and permissions granted via IAM roles.
-    service_account = google_service_account.gke_node.email
+    service_account = google_service_account.gke_node_service_account.email
     oauth_scopes = [
       "https://www.googleapis.com/auth/cloud-platform",
     ]
