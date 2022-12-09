@@ -120,7 +120,7 @@ resource "google_container_node_pool" "e2_standard_pool" {
   node_count = 1
 
   node_config {
-    spot  = var.use_spot_vms
+    spot         = var.use_spot_vms
     machine_type = "e2-standard-2"
     image_type   = "COS_CONTAINERD"
     disk_size_gb = "12"
