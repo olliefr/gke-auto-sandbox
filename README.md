@@ -10,7 +10,7 @@ It's a weird one &ndash; on the one hand, I aim to follow best practices and kee
 The most imporant deviations from a "production-grade" system are:
 
 * Logging and monitoring data production is well above default levels.
-* [Preemptible VM instances](https://cloud.google.com/compute/docs/instances/preemptible) are used for cluster nodes by default.
+* [Spot VM instances](https://cloud.google.com/compute/docs/instances/spot) are used for cluster nodes by default.
 * Terraform: all Google Cloud assets are deployed from a single Terraform module.
 * Terraform: very recent versions of Terraform and its providers are used.
 * Terraform: some input variables are not validated.
@@ -35,7 +35,7 @@ Although this deployment is meant for proof-of-concept and experimental work, it
 * It is _multi-zonal_ as the nodes are allocated in multiple zones;
 * It has a _public endpoint_ with access limited to the _list of authorised control networks_;
 * It has [Dataplane V2](https://cloud.google.com/blog/products/containers-kubernetes/bringing-ebpf-and-cilium-to-google-kubernetes-engine) enabled so it can enforce Network Policies;
-* It uses [preemptible VMs] for worker nodes. This reduces the running cost substantially;
+* It uses [Spot VMs](https://cloud.google.com/compute/docs/instances/spot) for worker nodes. This reduces the running cost substantially;
 * The worker nodes' outbound Internet access is via [Cloud NAT][^1];
 * [Cloud NAT] is enabled on the cluster subnet. This enables the cluster nodes' access to container registries located outside Google Cloud Platform; 
 * A [hardened node image with `containerd` runtime](https://cloud.google.com/kubernetes-engine/docs/concepts/using-containerd) is used;
@@ -119,7 +119,7 @@ This module accepts the following input variables.
 * (Optional) The default `region` for all resources.
 * (Optional) Cluster `availability_type`: default is `zonal`. Other option is `regional`. Defines the control plane location, as well as the default location for worker nodes.
 * (Optional) VPC flow logs: `enable_flow_log`
-* (Optional) Use `preemptible` VM instances for cluster nodes. Default is `true`.
+* (Optional) `use_spot_vms` defines if Spot VMs should be used for cluster nodes. Default is `true`.
 * (Optional) `node_cidr_range`
 * (Optional) `pod_cidr_range`
 * (Optional) `service_cidr_range`
@@ -187,7 +187,6 @@ The following list is some ideas for future explorations.
 * Provide an option for [Secret management];
 * Configure [Artifact registry];
 * Enable [Binary Authorization];
-* Replace [preemptible VMs] with [spot VMs];
 * [Shared VPC] set-up;
 * [VPC Service Controls];
 * Enable [intranode visibility] on a cluster;
@@ -201,8 +200,6 @@ The following list is some ideas for future explorations.
 [Secret management]: https://cloud.google.com/kubernetes-engine/docs/how-to/hardening-your-cluster#secret_management
 [Artifact registry]: https://cloud.google.com/artifact-registry/docs/overview
 [Binary authorization]: https://cloud.google.com/binary-authorization/docs
-[preemptible VMs]: https://cloud.google.com/compute/docs/instances/preemptible
-[spot VMs]: https://cloud.google.com/compute/docs/instances/spot
 [Cloud DNS for GKE]: https://cloud.google.com/kubernetes-engine/docs/how-to/cloud-dns
 [Shared VPC]: https://cloud.google.com/vpc/docs/shared-vpc
 [VPC Service Controls]: https://cloud.google.com/vpc-service-controls/docs/overview
