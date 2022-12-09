@@ -63,19 +63,27 @@ provider "google" {
 
 locals {
   enabled_services = [
-    "container.googleapis.com",
-  ]
-  long_running_services = [
     "cloudresourcemanager.googleapis.com",
     "serviceusage.googleapis.com",
     "iam.googleapis.com",
     "iamcredentials.googleapis.com",
     "logging.googleapis.com",
     "monitoring.googleapis.com",
+    "container.googleapis.com",
   ]
 }
 
-resource "google_project_service" "enabled_by_terraform" {
+# ADR: After extensive research and deliberations, I have made a decision
+# not to disable services on 'destroy'. This is for two reasons.
+# First, when you enable a service, Google Cloud may (and does) enable
+# other services that your service depends on. The list of service dependencies
+# is not public though. This is weird, but we have what we have. 
+# Second, in my opinion the whole process of enabling and disabling services
+# does not add value from the application developer's perspective.
+# The services required by the application must be enabled, but once they are
+# there is no value in disabling them when the application infrastructure 
+# is deprovisioned.
+resource "google_project_service" "enabled" {
   provider = google.seed
   for_each = toset(local.enabled_services)
   service  = each.key
@@ -87,15 +95,7 @@ resource "google_project_service" "enabled_by_terraform" {
 
   # (Optional) If true, disable the service when the Terraform resource is destroyed. Defaults to true.
   # May be useful in the event that a project is long-lived but the infrastructure running in that project changes frequently.
-  disable_on_destroy = true
-}
-resource "google_project_service" "long_running" {
-  provider = google.seed
-  for_each = toset(local.long_running_services)
-  service  = each.key
-
-  disable_dependent_services = false
-  disable_on_destroy         = false
+  disable_on_destroy = false
 }
 
 # In production environments, resources usually are deployed by 
@@ -138,8 +138,7 @@ resource "google_service_account" "admin_robot" {
   # without knowing that the service account depends on these services, Terraform will 
   # start parallel operations and may disable the services before other resources are destroyed.
   depends_on = [
-    google_project_service.long_running,
-    google_project_service.enabled_by_terraform,
+    google_project_service.enabled,
   ]
 }
 resource "google_project_iam_member" "admin_robot" {
