@@ -1,5 +1,3 @@
-# TODO great repo: https://github.com/terraform-google-modules/terraform-google-kubernetes-engine/blob/v27.0.0/modules/beta-autopilot-private-cluster/cluster.tf
-# Also https://cloud.google.com/kubernetes-engine/docs/resources/autopilot-standard-feature-comparison
 resource "google_container_cluster" "prod" {
   provider         = google-beta
   project          = data.google_project.default.project_id
