@@ -19,26 +19,32 @@ locals {
 }
 # A new Google service account for cluster nodes.
 resource "google_service_account" "gke_node_service_account" {
-  account_id  = "gke-node-default"
+  provider    = google
+  project     = data.google_project.default.project_id
+  account_id  = "cluster-node-minimal"
   description = "Locked down account for GKE nodes"
 }
 
 # The roles to grant to the node service account at the project level.
 resource "google_project_iam_member" "gke_node_service_account" {
-  project  = var.project
+  provider = google
+  project  = data.google_project.default.project_id
   for_each = toset(local.gke_node_service_account_roles)
   role     = each.key
   member   = google_service_account.gke_node_service_account.member
 }
 
-# To spin up nodes associated with the 'gke-node-default' service account, 
-# the 'admin-robot' service account must be assigned a 'Service Account User' role 
-# on that service account for cluster nodes. 
-resource "google_service_account_iam_member" "admin_robot_as_gke_node_service_account" {
-  service_account_id = google_service_account.gke_node_service_account.name
-  role               = "roles/iam.serviceAccountUser"
-  member             = google_service_account.admin_robot.member
-}
+# FIXME how do I go about this? Set a project-ide 'Service Account User' instead?
+# # To spin up nodes associated with the 'gke-node-default' service account, 
+# # the 'admin-robot' service account must be assigned a 'Service Account User' role 
+# # on that service account for cluster nodes. 
+# resource "google_service_account_iam_member" "admin_robot_as_gke_node_service_account" {
+#     provider = google
+#   project  = data.google_project.default.project_id
+#   service_account_id = google_service_account.gke_node_service_account.name
+#   role               = "roles/iam.serviceAccountUser"
+#   member             = google_service_account.admin_robot.member
+# }
 
 # Google Cloud IAM is eventually consistent and I don't like having to deal with transient permission errors.  
 # A well-known workaround is to wait some reasonable amount of time for IAM to propagate changes.
@@ -49,6 +55,6 @@ resource "time_sleep" "iam_sync_gke_node_service_account" {
   create_duration = "120s"
   depends_on = [
     google_project_iam_member.gke_node_service_account,
-    google_service_account_iam_member.admin_robot_as_gke_node_service_account,
+    # google_service_account_iam_member.admin_robot_as_gke_node_service_account,
   ]
 }

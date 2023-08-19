@@ -1,26 +1,31 @@
-# Google Kubernetes Engine (GKE) sandbox
+# Google Kubernetes Engine sandbox
 
-* **Project State: Prototyping**
-* For more information on project states and SLAs, see [this documentation](https://github.com/chef/chef-oss-practices/blob/d4333c01570eae69f65470d58ed9d251c2e552a3/repo-management/repo-states.md).
+> **Warning**
+> This is a research prototype. Think before you deploy :smiling_imp:
 
-This is my sandbox for [Google Kubernetes Engine](https://cloud.google.com/kubernetes-engine) (GKE). 
+This Terraform configuration deploys a sandbox for experimenting with [GKE Autopilot](https://cloud.google.com/kubernetes-engine/docs/concepts/autopilot-overview) private clusters.
 
-It's a weird one &ndash; on the one hand, I aim to follow best practices and keep it as "production-ready" as my skill level and experience allows. On the other hand, *this is a sandbox* for experimentation and demos, not a production system. Thus some aspects of it are configured differently from what you'd expect to see in a production system.
+Because it is meant for exploration and demos, some parts are configured differently from what you'd expect to see in a *production* system. The most prominent deviations are:
 
-The most imporant deviations from a "production-grade" system are:
+* A *lot* of telemetry is collected. Logging and monitoring levels are set well above their default values.
+* All Google Cloud resources for the cluster are deployed directly from this Terraform module with no extra dependencies.
+* The latest versions of Terraform and Terraform Google provider are used.
+* Some resources are deployed using [Google-beta provider](https://registry.terraform.io/providers/hashicorp/google-beta/latest).
+* Input validation is done on a "best-effort" basis.
+* No backwards compatibility should be expected.
 
-* Logging and monitoring data production is well above default levels.
-* [Spot VM instances](https://cloud.google.com/compute/docs/instances/spot) are used for cluster nodes by default.
-* Terraform: all Google Cloud assets are deployed from a single Terraform module.
-* Terraform: very recent versions of Terraform and its providers are used.
-* Terraform: some input variables are not validated.
+<!-- TODO research how Spot VMs work with Autopilot clusters
+* [Spot VM instances](https://cloud.google.com/kubernetes-engine/docs/concepts/spot-vms) are used for cluster nodes by default.
+-->
 
-Which are all acceptable trade-offs for my use case. And it's quite fun to play with.
+You have been warned! It's good fun, though, so feel free to fork and play around with GKE, it's pretty cool tech, in my opinion.
 
 # Useful resources
 
-These resources are useful for increasing one's awareness of what is considered "best practice" when it comes to GKE.
+GKE best practices and other related resources.
 
+* [Terraform for opinionated GKE clusters](https://github.com/terraform-google-modules/terraform-google-kubernetes-engine)
+* [Autopilot vs Standard clusters feature comparison](https://cloud.google.com/kubernetes-engine/docs/resources/autopilot-standard-feature-comparison)
 * [Best practices for GKE networking](https://cloud.google.com/kubernetes-engine/docs/best-practices/networking)
 * [Harden your cluster's security](https://cloud.google.com/kubernetes-engine/docs/how-to/hardening-your-cluster)
 * [Best practices for running cost-optimized Kubernetes applications on GKE](https://cloud.google.com/architecture/best-practices-for-running-cost-effective-kubernetes-applications-on-gke). Includes a great [summary](https://cloud.google.com/architecture/best-practices-for-running-cost-effective-kubernetes-applications-on-gke#summary_of_best_practices) checklist.
@@ -29,22 +34,23 @@ These resources are useful for increasing one's awareness of what is considered 
 
 Although this deployment is meant for proof-of-concept and experimental work, it implements many of the Google's [cluster security recommendations](https://cloud.google.com/kubernetes-engine/docs/how-to/hardening-your-cluster).
 
-* The cluster is [VPC-native](https://cloud.google.com/kubernetes-engine/docs/concepts/alias-ips) as it uses alias IP address ranges;
-* It is a [private cluster], that is its worker nodes do not have public IP addresses;
-* The default availability type is _zonal_, but can be changed to _regional_;
-* It is _multi-zonal_ as the nodes are allocated in multiple zones;
-* It has a _public endpoint_ with access limited to the _list of authorised control networks_;
-* It has [Dataplane V2](https://cloud.google.com/blog/products/containers-kubernetes/bringing-ebpf-and-cilium-to-google-kubernetes-engine) enabled so it can enforce Network Policies;
-* It uses [Spot VMs](https://cloud.google.com/compute/docs/instances/spot) for worker nodes. This reduces the running cost substantially;
-* The worker nodes' outbound Internet access is via [Cloud NAT][^1];
-* [Cloud NAT] is enabled on the cluster subnet. This enables the cluster nodes' access to container registries located outside Google Cloud Platform; 
-* A [hardened node image with `containerd` runtime](https://cloud.google.com/kubernetes-engine/docs/concepts/using-containerd) is used;
-* The nodes use a user-managed [least privilege service account];
-* [Shielded GKE nodes] feature is enabled;
-* [Secure Boot] and [Integrity Monitoring] are enabled on cluster nodes;
-* The cluster is subscribed to _Rapid_ [release channel];
-* [Workload Identity] is supported;
-* [VPC Flow Logs] are enabled by default on the cluster's subnet;
+* It is a [private cluster], so the cluster nodes do not have public IP addresses.
+<!-- * It has a _public endpoint_ with access limited to the _list of authorised control networks_; -->
+<!-- * It has [Dataplane V2](https://cloud.google.com/blog/products/containers-kubernetes/bringing-ebpf-and-cilium-to-google-kubernetes-engine) enabled so it can enforce Network Policies; -->
+<!-- * It uses [Spot VMs](https://cloud.google.com/compute/docs/instances/spot) for worker nodes. This reduces the running cost substantially. -->
+* [Cloud NAT] is configured to allow the cluster nodes and pods to access the Internet. So container registries located outside Google Cloud can be used.
+* The cluster nodes use a user-managed [least privilege service account].
+* The cluster is subscribed to the _Rapid_ [release channel].
+* [VPC Flow Logs] are enabled by default on the cluster subnetwork.
+
+Some other aspects which used to be a thing when this sandbox was for deployment of Standard GKE clusters are now ["pre-configured"](https://cloud.google.com/kubernetes-engine/docs/resources/autopilot-standard-feature-comparison) by GKE Autopilot, but it's still useful to remember what they are:
+
+* The cluster is [VPC-native](https://cloud.google.com/kubernetes-engine/docs/concepts/alias-ips).
+* It has *regional* availability.
+* [Shielded GKE nodes] feature is enabled.
+* [Secure Boot] and [Integrity Monitoring] are enabled.
+* [Workload Identity] is enabled.
+* A [hardened node image with `containerd` runtime](https://cloud.google.com/kubernetes-engine/docs/concepts/using-containerd) is used.
 
 [least privilege service account]: https://cloud.google.com/kubernetes-engine/docs/how-to/hardening-your-cluster#use_least_privilege_sa
 [Cloud NAT]: https://cloud.google.com/nat/docs/overview
@@ -60,21 +66,21 @@ Although this deployment is meant for proof-of-concept and experimental work, it
 
 <!-- TODO ideally you want the versions to be auto-generated (Terraform plus providers) -->
 
-* [Terraform](https://www.terraform.io/) 1.3.4 or later.
-* A Google Cloud project with the [necessary permissions](#required-permissions) granted to you;
-* The project must be linked to a [billing account].
+* [Terraform](https://www.terraform.io/), obviously.
+* A Google Cloud project with the [necessary permissions](#required-permissions) granted to you.
+* The project must be linked to an active [billing account].
 
 [billing account]: https://cloud.google.com/billing/docs/concepts#billing_account
 
-### Required permissions
+### Permissions required to deploy
 
-The `owner` basic role on the project would work. The `editor` might but I have not tested it. 
+Given that this is a research prototype, I am not that fussy about scoping every admin role that is needed to deploy this module. The `roles/owner` IAM basic role on the project would work. The `roles/editor` IAM basic role *might* work but I have not tested it. 
 
 <!--
 The operator must have the permissions to enable new services, create service accounts, set IAM bindings at project level.
 -->
 
-**Alternatively**, the following roles are required at project level.
+If you fancy doing it *the hard way* &ndash; and there is time and place for such adventures, indeed &ndash; I hope this starting list of roles will help:
 
 * Kubernetes Engine Admin (`roles/container.admin`)
 * Service Account Admin (`roles/iam.serviceAccountAdmin`)
@@ -86,46 +92,62 @@ The operator must have the permissions to enable new services, create service ac
 
 ## Quick start
 
-Clone the repo and create the variable definitions file `env.auto.tfvars` with the following content.
+Clone the repo and you are good to go! You can provide the input variables' values as command-line parameters to Terraform CLI:
+
+```shell
+terraform init && terraform apply -var="project=infernal-horse" -var="region=europe-west4"
+```
+
+* You _must_ set the Google Cloud project ID and Google Cloud region.
+* You _may_ set `authorized_networks` to enable access ot the cluster's endpoint from a public IP address. You still would have to authenticate.
+
+> **Note**
+> The default value for `authorized_networks` does not allows any public access to the cluster endpoint.
+
+To avoid having to provide the input variable values on the command line, you can create a variable definitions file, such as `env.auto.tfvars` and define the values therein.
 
 ```hcl
-project = "???"
-region  = "europe-west2"
-location = "europe-west2"
+project = "<PROJECT_ID>"
+region  = "<REGION>"
 
 authorized_networks = [
   {
-    cidr_block   = "0.0.0.0/0"
-    display_name = "warning-publicly-accessible-endpoint"
+    cidr_block   = "1.2.3.4/32"
+    display_name = "my-ip-address"
   },
 ]
 ```
 
-* You _must_ set the `project` ID;
-* You _may_ change the `region` to your preferred values;
-* You _should_ change the values in `authorized_networks` to only allow access from your approved CIDR blocks.
+Note that you'd have to provide your own values for the variables 😉
 
-❗ The default value for `authorized_networks` allows public access to the cluster endpoint. You still have to authenticate to perform any action, but it's not best practice to leave the control plane endpoint exposed to the world. So, adjust the `authorized_networks` accordingly.
+> **Note**
+> To find your public IP, you can run the following command
+>
+>  ```shell
+>  dig -4 TXT +short o-o.myaddr.l.google.com @ns1.google.com
+>  ```
 
-To find your public IP, you can run `dig -4 TXT +short o-o.myaddr.l.google.com @ns1.google.com`
+Now you can run Terraform (`init` ... `plan` ... `apply`) to deploy. 
 
-Now you can deploy with Terraform (`init` ... `plan` ... `apply`). Enjoy! :shipit:
+Happy hacking! :shipit:
 
 ## Input variables
 
 This module accepts the following input variables.
 
-* `project` is the Google Cloud project resource ID.
-* (Optional) The default `region` for all resources.
-* (Optional) Cluster `availability_type`: default is `zonal`. Other option is `regional`. Defines the control plane location, as well as the default location for worker nodes.
+* `project` is the Google Cloud project ID.
+* `region` is the Google Cloud region for all deployed resources.
 * (Optional) VPC flow logs: `enable_flow_log`
-* (Optional) `use_spot_vms` defines if Spot VMs should be used for cluster nodes. Default is `true`.
+<!-- * (Optional) `use_spot_vms` defines if Spot VMs should be used for cluster nodes. Default is `true`. -->
 * (Optional) `node_cidr_range`
 * (Optional) `pod_cidr_range`
 * (Optional) `service_cidr_range`
 * (Optional) The list of `authorized_networks` representing CIDR blocks allowed to access the cluster's control plane.
 
 ## Example workload
+
+> **Warning**
+> This section is grossly out-of-date!
 
 Once the infrastructure is provisioned with Terraform, you can deploy the example workload.
 
@@ -136,6 +158,9 @@ Once the infrastructure is provisioned with Terraform, you can deploy the exampl
 [olliefr/gke-microservices-demo]: https://github.com/olliefr/gke-microservices-demo
 
 ## Code structure
+
+> **Warning**
+> This section is grossly out-of-date!
 
 This module runs in two stages, using two (aliased) instances of Terraform Google provider.
 
@@ -169,6 +194,7 @@ This deployment architecture serves three aims:
 # 060-cluster: create a GKE cluster (Standard)
 ```
 
+<!-- 
 ```
 TODO enable audit log entries for used APIs:
 https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/google_project_iam#google_project_iam_audit_config
@@ -177,12 +203,13 @@ https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/g
 ```
 TODO add moar Terraform outputs to give a decent summary of what the cluster is about (CIDR ranges, etc)
 ```
+-->
 
 ## Future work
 
-The following list is some ideas for future explorations.
+Just some ideas for future explorations.
 
-* Deploy by impersonating a service account to validate the list of required roles;
+* Deploy by impersonating a service account to validate the list of required admin roles;
 * Create a [private cluster with no public endpoint][pcwnpe] and access the endpoint using [IAP for TCP forwarding];
 * Provide an option for [Secret management];
 * Configure [Artifact registry];
@@ -190,7 +217,7 @@ The following list is some ideas for future explorations.
 * [Shared VPC] set-up;
 * [VPC Service Controls];
 * Enable [intranode visibility] on a cluster;
-* Set up [Config Connector] (or use [Config Controller]);
+* Set up the [Config Connector] (or use the [Config Controller]);
 * Explore [Cloud DNS for GKE] option;
 * IPv6 set-up;
 * Explore [Anthos Service Mesh] (managed Istio);
