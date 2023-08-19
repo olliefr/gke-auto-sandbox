@@ -31,6 +31,13 @@ resource "google_container_cluster" "prod" {
   network    = google_compute_network.cluster_vpc.id
   subnetwork = google_compute_subnetwork.cluster_net.id
 
+  # FIXME the following DNS configuration was enforced by Autopilot. I created this block after having deployed the cluster.
+  dns_config {
+    cluster_dns        = "CLOUD_DNS"
+    cluster_dns_scope  = "CLUSTER_SCOPE"
+    cluster_dns_domain = "cluster.local"
+  }
+
   # It's bloody hard to extract the name from google_compute_subnetwork.cluster_net.secondary_ip_range data structure,
   # if you don't know what exactly that name is! I chose to validate like this, instead. Judge me!
   lifecycle {
@@ -44,7 +51,7 @@ resource "google_container_cluster" "prod" {
     }
   }
 
-  # FIXME the ranges can be given back to GKE to manage?
+  # The CIDR ranges for Pods and Services can be given back to GKE to manage, but I don't want that.
   # By providing the names of the existing secondary ranges in the cluster's subnetwork, 
   # we define what CIDRs should be used so GKE is not going to create any ranges automatically.
   ip_allocation_policy {
