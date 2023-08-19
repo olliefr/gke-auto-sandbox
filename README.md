@@ -101,10 +101,10 @@ terraform init && terraform apply -var="project=infernal-horse" -var="region=eur
 * You _must_ set the Google Cloud project ID and Google Cloud region.
 * You _may_ set `authorized_networks` to enable access ot the cluster's endpoint from a public IP address. You still would have to authenticate.
 
-Alternatively, you can create a variable definitions file, such as `env.auto.tfvars` and define the values therein.
-
 > **Note**
 > The default value for `authorized_networks` does not allows any public access to the cluster endpoint.
+
+To avoid having to provide the input variable values on the command line, you can create a variable definitions file, such as `env.auto.tfvars` and define the values therein.
 
 ```hcl
 project = "<PROJECT_ID>"
@@ -117,6 +117,8 @@ authorized_networks = [
   },
 ]
 ```
+
+Note that you'd have to provide your own values for the variables 😉
 
 > **Note**
 > To find your public IP, you can run the following command
