@@ -1,16 +1,18 @@
-# Google Kubernetes Engine (GKE) sandbox
+# Google Kubernetes Engine sandbox
 
 > **Warning**
-> This configuration is a research prototype. Use with caution :smiling_imp:
+> This is a research prototype. Think before you deploy :smiling_imp:
 
-This Terraform configuration deploys a sandbox for experimenting with [GKE Autopilot](https://cloud.google.com/kubernetes-engine) private clusters.
+This Terraform configuration deploys a sandbox for experimenting with [GKE Autopilot](https://cloud.google.com/kubernetes-engine/docs/concepts/autopilot-overview) private clusters.
 
 Because it is meant for exploration and demos, some parts are configured differently from what you'd expect to see in a *production* system. The most prominent deviations are:
 
 * A *lot* of telemetry is collected. Logging and monitoring levels are set well above their default values.
-* All Google Cloud resources for the cluster are deployed directly from this Terraform module using the latest versions of Terraform and Terraform Google provider.
-* Input validation is not a priority.
-* Backwards compatibility is non-existent.
+* All Google Cloud resources for the cluster are deployed directly from this Terraform module with no extra dependencies.
+* The latest versions of Terraform and Terraform Google provider are used.
+* Some resources are deployed using [Google-beta provider](https://registry.terraform.io/providers/hashicorp/google-beta/latest).
+* Input validation is done on a "best-effort" basis.
+* No backwards compatibility should be expected.
 
 <!-- TODO research how Spot VMs work with Autopilot clusters
 * [Spot VM instances](https://cloud.google.com/kubernetes-engine/docs/concepts/spot-vms) are used for cluster nodes by default.
@@ -36,7 +38,7 @@ Although this deployment is meant for proof-of-concept and experimental work, it
 <!-- * It has a _public endpoint_ with access limited to the _list of authorised control networks_; -->
 <!-- * It has [Dataplane V2](https://cloud.google.com/blog/products/containers-kubernetes/bringing-ebpf-and-cilium-to-google-kubernetes-engine) enabled so it can enforce Network Policies; -->
 <!-- * It uses [Spot VMs](https://cloud.google.com/compute/docs/instances/spot) for worker nodes. This reduces the running cost substantially. -->
-* [Cloud NAT][^1] is configured to allow the cluster nodes and pods to access the Internet. So container registries located outside Google Cloud can be used.
+* [Cloud NAT] is configured to allow the cluster nodes and pods to access the Internet. So container registries located outside Google Cloud can be used.
 * The cluster nodes use a user-managed [least privilege service account].
 * The cluster is subscribed to the _Rapid_ [release channel].
 * [VPC Flow Logs] are enabled by default on the cluster subnetwork.
@@ -64,7 +66,7 @@ Some other aspects which used to be a thing when this sandbox was for deployment
 
 <!-- TODO ideally you want the versions to be auto-generated (Terraform plus providers) -->
 
-* [Terraform](https://www.terraform.io/)
+* [Terraform](https://www.terraform.io/), obviously.
 * A Google Cloud project with the [necessary permissions](#required-permissions) granted to you.
 * The project must be linked to an active [billing account].
 
