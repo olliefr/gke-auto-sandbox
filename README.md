@@ -207,7 +207,7 @@ TODO add moar Terraform outputs to give a decent summary of what the cluster is 
 
 ## Future work
 
-The following list is some ideas for future explorations.
+Just some ideas for future explorations.
 
 * Deploy by impersonating a service account to validate the list of required admin roles;
 * Create a [private cluster with no public endpoint][pcwnpe] and access the endpoint using [IAP for TCP forwarding];
