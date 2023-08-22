@@ -30,7 +30,7 @@ GKE best practices and other related resources.
 
 Although this deployment is meant for proof-of-concept and experimental work, it implements many of the Google's [cluster security recommendations](https://cloud.google.com/kubernetes-engine/docs/how-to/hardening-your-cluster).
 
-* It is a [private cluster] so the cluster nodes do not have public IP addresses.
+* It is a [private cluster] so the cluster nodes do not have public IP addresses and there is no public endpoint for the control plane.
 <!-- * It has a _public endpoint_ with access limited to the _list of authorised control networks_; -->
 <!-- * It has [Dataplane V2](https://cloud.google.com/blog/products/containers-kubernetes/bringing-ebpf-and-cilium-to-google-kubernetes-engine) enabled so it can enforce Network Policies; -->
 * [Cloud NAT] is configured to allow the cluster nodes and pods to access the Internet. So container registries located outside Google Cloud can be used.
@@ -44,9 +44,10 @@ Some other aspects which used to be a thing when this sandbox was for deployment
 * It has *regional* availability.
 * [Shielded GKE nodes] feature is enabled.
 * [Secure Boot] and [Integrity Monitoring] are enabled.
+* [Intranode visibility] is enabled.
 * [Workload Identity] is enabled.
 * A [hardened node image with `containerd` runtime](https://cloud.google.com/kubernetes-engine/docs/concepts/using-containerd) is used.
-* [Spot VM instances](https://cloud.google.com/kubernetes-engine/docs/concepts/spot-vms) are provisioned by Autopilot by default when [Spot Pods](https://cloud.google.com/kubernetes-engine/docs/how-to/autopilot-spot-pods) are requested. 
+* [Spot VM instances](https://cloud.google.com/kubernetes-engine/docs/concepts/spot-vms) are provisioned by Autopilot by default when [Spot Pods](https://cloud.google.com/kubernetes-engine/docs/how-to/autopilot-spot-pods) are requested.
 
 [least privilege service account]: https://cloud.google.com/kubernetes-engine/docs/how-to/hardening-your-cluster#use_least_privilege_sa
 [Cloud NAT]: https://cloud.google.com/nat/docs/overview
@@ -129,16 +130,10 @@ Happy hacking! :shipit:
 
 ## Input variables
 
-This module accepts the following input variables.
+> **Warning**
+> TODO set up auto-generation of this section 
 
-* `project` is the Google Cloud project ID.
-* `region` is the Google Cloud region for all deployed resources.
-* (Optional) VPC flow logs: `enable_flow_log`
-<!-- * (Optional) `use_spot_vms` defines if Spot VMs should be used for cluster nodes. Default is `true`. -->
-* (Optional) `node_cidr_range`
-* (Optional) `pod_cidr_range`
-* (Optional) `service_cidr_range`
-* (Optional) The list of `authorized_networks` representing CIDR blocks allowed to access the cluster's control plane.
+The input variables are currently documented in [`variables.tf`](./variables.tf)
 
 ## Example workload
 
@@ -210,9 +205,10 @@ Just some ideas for future explorations.
 * Provide an option for [Secret management];
 * Configure [Artifact registry];
 * Enable [Binary Authorization];
+* Try deploying with GPUs.
+* Try deploying [Spot Pods].
 * [Shared VPC] set-up;
 * [VPC Service Controls];
-* Enable [intranode visibility] on a cluster;
 * Set up the [Config Connector] (or use the [Config Controller]);
 * Explore [Cloud DNS for GKE] option;
 * IPv6 set-up;

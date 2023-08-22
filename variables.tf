@@ -216,10 +216,3 @@ variable "master_authorized_networks" {
     error_message = "Must be a list of name to IPv4 CIDR mappings."
   }
 }
-
-variable "use_spot_vms" {
-  description = "Use Spot VMs for GKE cluster nodes to substantially reduce cost. Default is true."
-  type        = bool
-  default     = true
-  nullable    = false
-}
