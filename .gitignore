@@ -1,12 +1,7 @@
 .terraform
 *tfplan*
 *.tfstate*
-
-# Global environment configuration
-env.auto.tfvars
-
-# Project-specific configuration
-provider_google.auto.tfvars
+*.tfvars
 
 # Other
 .idea/

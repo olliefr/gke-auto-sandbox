@@ -1,60 +1,38 @@
-# This file defines an IAM service account for GKE nodes.
-#
-# Each GKE node has an IAM service account associated with it.
-# By default, nodes are given the Compute Engine default service account,
-# which has broad access by default, making it useful to wide variety of applications, 
-# but it has more permissions than are required to run your Kubernetes Engine nodes.
-# 
-# The best practice is to disable the Compute Engine default service account, and
-# to create and use a minimally privileged service account for your nodes.
-#
-# Reference: https://cloud.google.com/kubernetes-engine/docs/how-to/hardening-your-cluster#use_least_privilege_sa
+# Create a service account to attach to GKE cluster nodes and grant a limited set of privileges to it.
+# Best practice: https://cloud.google.com/kubernetes-engine/docs/how-to/hardening-your-cluster#use_least_privilege_sa
 
 locals {
+  # The service account roles can be customised by the user.
   # The "Kubernetes Engine Node Service Account" role is sufficient to run a GKE node.
   # Reference: https://cloud.google.com/iam/docs/understanding-roles#container.nodeServiceAccount
-  gke_node_service_account_roles = [
+  container_node_service_account_roles = distinct(compact(concat([
     "roles/container.nodeServiceAccount",
-  ]
+  ], var.container_node_service_account_roles)))
 }
-# A new Google service account for cluster nodes.
-resource "google_service_account" "gke_node_service_account" {
+
+# A dedicated service account for GKE cluster nodes.
+resource "google_service_account" "container_node" {
   provider    = google
   project     = data.google_project.default.project_id
-  account_id  = "cluster-node-minimal"
-  description = "Locked down account for GKE nodes"
+  account_id  = "container-node-minimal"
+  description = "Locked down account for GKE cluster nodes"
 }
 
-# The roles to grant to the node service account at the project level.
-resource "google_project_iam_member" "gke_node_service_account" {
+# The IAM roles to grant on the project to the GKE cluster node service account.
+resource "google_project_iam_member" "container_node_service_account" {
   provider = google
   project  = data.google_project.default.project_id
-  for_each = toset(local.gke_node_service_account_roles)
+  for_each = toset(local.container_node_service_account_roles)
   role     = each.key
-  member   = google_service_account.gke_node_service_account.member
+  member   = google_service_account.container_node.member
 }
 
-# FIXME how do I go about this? Set a project-ide 'Service Account User' instead?
-# # To spin up nodes associated with the 'gke-node-default' service account, 
-# # the 'admin-robot' service account must be assigned a 'Service Account User' role 
-# # on that service account for cluster nodes. 
-# resource "google_service_account_iam_member" "admin_robot_as_gke_node_service_account" {
-#     provider = google
-#   project  = data.google_project.default.project_id
-#   service_account_id = google_service_account.gke_node_service_account.name
-#   role               = "roles/iam.serviceAccountUser"
-#   member             = google_service_account.admin_robot.member
-# }
-
-# Google Cloud IAM is eventually consistent and I don't like having to deal with transient permission errors.  
-# A well-known workaround is to wait some reasonable amount of time for IAM to propagate changes.
-# This approach is not infallible because IAM changes may take hours to propagate in the worst case scenario.
-# But it's better than nothing and, empirically, the following delay is enough.
-# FIXME: at some point in the future Terraform should learn to handle eventual consistency gracefully...
-resource "time_sleep" "iam_sync_gke_node_service_account" {
-  create_duration = "120s"
+# TODO by itself this does not help. there must be another resource depending on this one later on!
+# Pause to give Google Cloud IAM a chance to sync. The IAM is only 'eventually' consistent.
+# Reference: https://cloud.google.com/iam/docs/access-change-propagation
+resource "time_sleep" "iam_nap" {
+  create_duration = "2m"
   depends_on = [
-    google_project_iam_member.gke_node_service_account,
-    # google_service_account_iam_member.admin_robot_as_gke_node_service_account,
+    google_project_iam_member.container_node_service_account,
   ]
 }

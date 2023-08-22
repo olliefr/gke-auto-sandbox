@@ -1,14 +1,22 @@
-resource "google_container_cluster" "prod" {
+locals {
+  authorized_networks = []
+}
+
+
+resource "google_container_cluster" "private" {
   provider         = google-beta
   project          = data.google_project.default.project_id
+  location         = var.google_region
   name             = "private-cluster-0"
   enable_autopilot = true
 
-  # This is the way to instruct Autopilot not to use the default Compute Engine service account.
+  network    = google_compute_network.custom_vpc.id
+  subnetwork = google_compute_subnetwork.cluster_net.id
+
   cluster_autoscaling {
     autoscaling_profile = "OPTIMIZE_UTILIZATION"
     auto_provisioning_defaults {
-      service_account = google_service_account.gke_node_service_account.email
+      service_account = google_service_account.container_node.email
     }
   }
   vertical_pod_autoscaling {
@@ -23,12 +31,6 @@ resource "google_container_cluster" "prod" {
     channel = var.release_channel
   }
 
-  # Cluster availability type is regional because Autopilot
-  location = var.region
-
-  network    = google_compute_network.cluster_vpc.id
-  subnetwork = google_compute_subnetwork.cluster_net.id
-
   # FIXME the following DNS configuration was enforced by Autopilot. I created this block after having deployed the cluster.
   dns_config {
     cluster_dns        = "CLOUD_DNS"
@@ -40,11 +42,11 @@ resource "google_container_cluster" "prod" {
   # if you don't know what exactly that name is! I chose to validate like this, instead. Judge me!
   lifecycle {
     precondition {
-      condition = (
-        length(google_compute_subnetwork.cluster_net.secondary_ip_range) == 2 &&
-        strcontains(google_compute_subnetwork.cluster_net.secondary_ip_range[0].range_name, "pod") &&
+      condition = try(alltrue([
+        length(google_compute_subnetwork.cluster_net.secondary_ip_range) == 2,
+        strcontains(google_compute_subnetwork.cluster_net.secondary_ip_range[0].range_name, "pod"),
         strcontains(google_compute_subnetwork.cluster_net.secondary_ip_range[1].range_name, "service")
-      )
+      ]), false)
       error_message = "Secondary ranges for cluster subnetwork appear to be defined in a format this resource did not expect"
     }
   }
@@ -57,20 +59,29 @@ resource "google_container_cluster" "prod" {
     services_secondary_range_name = google_compute_subnetwork.cluster_net.secondary_ip_range[1].range_name
   }
 
-  # TODO maybe add a small "admin" subnet? or smth else?
+  # Access to cluster endpoints docs: https://cloud.google.com/kubernetes-engine/docs/concepts/private-cluster-concept#overview
   private_cluster_config {
     enable_private_endpoint = true
     enable_private_nodes    = true
     master_ipv4_cidr_block  = var.master_ipv4_cidr_block
 
+    # Use with private clusters to allow access to the master's private endpoint from any Google Cloud region
+    # or on-premises environment. This is the `--enable-master-global-access` argument in gcloud CLI.
+    # Technical details: https://cloud.google.com/kubernetes-engine/docs/how-to/private-clusters#cp-global-access
     master_global_access_config {
-      enabled = false
+      enabled = var.private_cluster_master_global_access
     }
   }
 
+  # - If the public endpoint is disabled (by setting private_cluster_config/enable_private_endpoint to true),
+  # the authorised networks list cannot contain any public IPs. The internal IP addresses other than nodes and Pods
+  # need to be on the list to access the control plane's private endpoint. Addresses in the primary IP address range
+  # of the cluster's subnet (nodes' addresses) are always authorized to communicate with the private endpoint.
+  # - If the public endpoint was not disabled, the authorised networks list can be used to grant access
+  # to the control plane from external IP addresses, and from internal IP addresses other than nodes and Pods.
   master_authorized_networks_config {
     dynamic "cidr_blocks" {
-      for_each = var.authorized_networks
+      for_each = var.master_authorized_networks
       content {
         cidr_block   = cidr_blocks.value.cidr_block
         display_name = cidr_blocks.value.display_name

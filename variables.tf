@@ -1,141 +1,220 @@
-# This module deploys all its resources into a single Google Cloud project,
-# and into a single region. These input variables define that project and region,
-# as well as the default zone in that region. These values are also used 
-# at a Google Terraform provider level as a fallback.
-variable "project" {
+# Definitions of all input variables, sorted in ascending order by the (conceptual) deployment "stage".
+
+# 010-seed
+
+variable "google_project" {
+  description = "The Google Cloud project ID defines the existing parent project for all resources in this module."
+  type        = string
+  nullable    = false
+}
+variable "google_region" {
+  description = "The Google Cloud region ID defines the deployment region for all regional resources in this module."
+  type        = string
+  nullable    = false
+}
+
+variable "enable_services" {
+  description = "The list of Google Cloud APIs to enable on the project in addition to APIs required by this module."
+  type        = list(string)
+  default     = []
+  nullable    = false
+}
+
+# 030-cluster-node-sa
+
+variable "container_node_service_account_roles" {
   description = <<-EOT
-    All resources deployed by this module are contained in a single project that must already exist. 
-    The project must be linked to a billing account. 
-    The operator must have enough permissions to:
-      - enable services;
-      - create service accounts;
-      - set IAM policy at project level.
+    The list of IAM roles to grant on the project to the service account attached to GKE cluster nodes
+    in addition to the minimal set of roles granted by this module.
+  EOT
+  type        = list(string)
+  default     = []
+  nullable    = false
+}
+
+# 040-network
+
+variable "cluster_admin_subnetwork_ipv4_cidr" {
+  description = <<-EOT
+    The primary IP range for the VPC subnetwork which will be used for GKE private cluster
+    administration via the cluster's private endpoint. This network is on the master authorised networks list.
   EOT
   type        = string
+  default     = "192.168.100.0/28"
   nullable    = false
-}
-variable "region" {
-  description = "The Google Cloud region ID to use as a default with Google Cloud provider."
-  type        = string
-  nullable    = false
-}
-
-variable "flow_log_enabled" {
-  type     = bool
-  default  = false
-  nullable = false
-}
-# TODO break down into three simple variables flow_log_{...}
-variable "flow_log_config" {
-  description = "VPC flow log configuration, as per google_compute_subnetwork resource docs."
-  default = {
-    aggregation_interval = "INTERVAL_5_SEC"
-    flow_sampling        = 1.0
-    metadata             = "INCLUDE_ALL_METADATA"
+  validation {
+    condition     = can(cidrnetmask(var.cluster_admin_subnetwork_ipv4_cidr))
+    error_message = "Must be a valid IPv4 CIDR, as defined in RFC 4632 section 3.1."
   }
-  nullable = false
 }
 
-# TODO move this documentation to README
-# IP address range planning
-# https://cloud.google.com/kubernetes-engine/docs/concepts/alias-ips
-#
-# Subnet primary IP address range (used for cluster nodes)
-# Once created, it
-#   + can expland at any time
-#   - cannot shrink
-#   - cannot change IP address scheme
-# Thus, it makes sense to start small. Let's say 16 nodes (which is 2^4).
-# Adresses for 16 nodes require (4+1) bits to represent (+1 is to accomodate for 4 reserved addresses),
-# thus the mask /(32-5) = /27. It's a bit more than what's needed, but losing
-# a bit would reduce the number of allowed nodes to 12. So, /27 it is.
-# So, the CIDR block for the primary IP adderess range (cluster nodes IP addresses) is /27.
-#
-# Next, the pod address range. There's a limit on the number of pods each node can host,
-# we change it from the default value of 110 to 32 (which is the default value for Autopilot clusters),
-# and it's more reasonable, in my opinion. Now that we know that each node can host no more than 32 = 2^5
-# pods, and we know that we can have at most 16 = 2^4 nodes, the total address space size is 2^5 * 2^4 = 2^9,
-# or 512. But this does not take into account the x2 rule for pod IP addresses (pods starting up and shutting
-# down). Thus, the true smallest value our pod IP address range can have is 2 * 512 = 1024, or 2^10.
-# This dictates the CIDR mask of /(32 - 10) = /22. What are the implications for the future scalability?
-#   + it is possible to replace a subnet's secondary IP address range
-#   - doing so is not supported because it has the potential to put the cluster in an unstable state
-#   + however, you can create additional Pod IP address ranges using discontiguous multi-Pod CIDR
-# So, if we were really short of IP addresses, we could stop at /22 and use the discontiguous multi-Pod CIDR
-# feature as and when needed. But we are not short of addresses, so I am going to upgrade /22 to /19, increasing
-# the Pod IP range eightfold (giving up three bits on the network part of the address).
-#
-# Finally, the Services secondary range. This range cannot be changed as long as a cluster uses it for Services (cluster IP addresses).
-# Unlike node and Pod IP address ranges, each cluster must have a unique subnet secondary IP address range for Services and cannot be sourced from a shared primary or secondary IP range.
-# On the other hand, we are not short of IP address space, and we don't anticipate having thousands and thousands of services.
-# Thus, the default (as if the secondary IP range assignment method was managed by GKE) size of /20, giving 4096 services, is good enough.
-
-# TODO rename cidr variables to be in the format cidr_range_{nodes|pods|services}
-variable "node_cidr_range" {
-  description = "Subnet primary IP range for cluster nodes."
+variable "cluster_subnetwork_ipv4_cidr" {
+  description = "The primary IP range for the VPC subnetwork to which the GKE cluster will be connected."
   type        = string
   default     = "10.128.0.0/27"
   nullable    = false
+  validation {
+    condition     = can(cidrnetmask(var.cluster_subnetwork_ipv4_cidr))
+    error_message = "Must be a valid IPv4 CIDR, as defined in RFC 4632 section 3.1."
+  }
 }
-variable "pod_cidr_range" {
-  description = "Subnet secondary IP range for GKE pods."
+
+variable "pods_ipv4_cidr" {
+  description = <<-EOT
+    A secondary IP range for the VPC subnetwork to which the GKE cluster will be connected.
+    To be used for Kubernetes Pods.
+  EOT
   type        = string
   default     = "10.1.0.0/19"
   nullable    = false
+  validation {
+    condition     = can(cidrnetmask(var.pods_ipv4_cidr))
+    error_message = "Must be a valid IPv4 CIDR, as defined in RFC 4632 section 3.1."
+  }
 }
-variable "service_cidr_range" {
-  description = "Subnet secondary IP range for GKE services."
+
+variable "services_ipv4_cidr" {
+  description = <<-EOT
+    A secondary IP range for the VPC subnetwork to which the GKE cluster will be connected.
+    To be used for Kubernetes Services.
+  EOT
   type        = string
   default     = "10.2.0.0/20"
   nullable    = false
+  validation {
+    condition     = can(cidrnetmask(var.services_ipv4_cidr))
+    error_message = "Must be a valid IPv4 CIDR, as defined in RFC 4632 section 3.1."
+  }
 }
 
-variable "release_channel" {
-  description = "Desired Kubernetes release channel. One of: {UNSPECIFIED, RAPID, REGULAR, STABLE}."
+variable "flow_logs_aggregation_interval" {
+  description = "VPC Flow Logs aggregation interval"
   type        = string
-  default     = "REGULAR"
+  default     = "INTERVAL_5_SEC"
   nullable    = false
   validation {
-    condition     = can(contains(["UNSPECIFIED", "RAPID", "REGULAR", "STABLE"], upper(var.release_channel)))
-    error_message = "Unsupported value for release channel was provided"
+    condition = contains([
+      "INTERVAL_5_SEC", "INTERVAL_30_SEC", "INTERVAL_1_MIN",
+      "INTERVAL_5_MIN", "INTERVAL_10_MIN", "INTERVAL_15_MIN"
+    ], var.flow_logs_aggregation_interval)
+    error_message = "Must be one of: ..."
+  }
+}
+
+variable "flow_logs_sampling_rate" {
+  description = "VPC Flow Logs flow sampling rate. Set to 0.0 to disable."
+  type        = number
+  default     = 1.0
+  nullable    = false
+  validation {
+    condition     = var.flow_logs_sampling_rate >= 0.0 && var.flow_logs_sampling_rate <= 1.0
+    error_message = "Must be from 0.0 to 1.0 inclusive, which means from 0 to 100 percent."
+  }
+}
+
+variable "flow_logs_metadata" {
+  description = "Defines which VPC Flow Logs metadata annotations to save in the flow logs."
+  type        = string
+  default     = "INCLUDE_ALL_METADATA"
+  nullable    = false
+  validation {
+    condition     = contains(["INCLUDE_ALL_METADATA", "EXCLUDE_ALL_METADATA"], var.flow_logs_metadata)
+    error_message = "Must be one of: INCLUDE_ALL_METADATA, EXCLUDE_ALL_METADATA."
+  }
+}
+
+# 050-nat
+
+variable "nat_logs_enabled" {
+  description = "Whether Cloud NAT logging should be enabled."
+  type        = bool
+  default     = true
+  nullable    = false
+}
+
+variable "nat_logs_filter" {
+  description = "Cloud NAT logs filtering - errors, translations, or both."
+  type        = string
+  default     = "ERRORS_ONLY"
+  nullable    = false
+  validation {
+    condition     = contains(["ERRORS_ONLY", "TRANSLATIONS_ONLY", "ALL"], var.nat_logs_filter)
+    error_message = "Must be one of: ERRORS_ONLY, TRANSLATIONS_ONLY, ALL."
+  }
+}
+
+# 060-cluster
+
+variable "release_channel" {
+  description = "Release channel the cluster is subscribed to."
+  type        = string
+  default     = "RAPID"
+  nullable    = false
+  validation {
+    condition     = contains(["UNSPECIFIED", "RAPID", "REGULAR", "STABLE"], var.release_channel)
+    error_message = "Must be one of: UNSPECIFIED, RAPID, REGULAR, STABLE."
   }
 }
 
 variable "enable_private_endpoint" {
-  description = "Enabling the private endpoint disables the public one. The public endpoint is disabled by default. Set to true to enable it."
+  description = <<-EOT
+    If set to true, the cluster will be private and can only be managed using the private IP address
+    of the master API endpoint. Even if access to the public endpoint is disabled, Google can use the control plane's
+    public endpoint for cluster management purposes, such as scheduled maintenance and automatic upgrades.
+  EOT
   type        = bool
   default     = true
   nullable    = false
-
 }
+
+variable "private_cluster_master_global_access" {
+  description = <<-EOT
+    If set to true, the control plane's private endpoint global access is enabled and internal clients can access
+    the control plane's private endpoint from any region. If set to false, these clients must be located
+    in the same region as the cluster. This setting has no effect on public access to the control plane.
+  EOT
+  type        = bool
+  default     = true
+  nullable    = false
+}
+
 variable "master_ipv4_cidr_block" {
   description = "The CIDR range for hosted GKE master network (must be /28)."
   type        = string
   default     = "172.16.0.0/28"
   nullable    = false
+  validation {
+    condition     = can(cidrnetmask(var.master_ipv4_cidr_block))
+    error_message = "Requires a valid IPv4 CIDR, as defined in RFC 4632 section 3.1."
+  }
 }
 
-variable "max_pods_per_node" {
-  description = "The maximum number of pods per node in this cluster."
-  type        = number
-  default     = 32 # Default value for Autopilot clusters; borrowed the idea.
-  nullable    = false
-}
-
-variable "authorized_networks" {
+variable "master_authorized_networks" {
   description = "The CIDR blocks allowed to access the cluster control plane."
   type = list(object({
     cidr_block : string
     display_name : string
   }))
-  # default = [
+  default  = []
+  nullable = false
+  # TODO can regex the display name as well but not now
+  # TODO try making this input variable a map of name to CIDR values. would it be more readable?
+  # [
   #   {
   #     cidr_block   = "0.0.0.0/0"
   #     display_name = "warning-publicly-accessible-endpoint"
   #   },
   # ]
-  default  = []
-  nullable = false
+  # TODO the message displayed by this validator is not very helpful as it does not say which item and which field was rejected
+  validation {
+    condition = try(alltrue([
+      for net in var.master_authorized_networks : alltrue([
+        can(cidrnetmask(net.cidr_block)),
+        length(net.display_name) > 0,
+      ])
+    ]), false)
+    error_message = "Must be a list of name to IPv4 CIDR mappings."
+  }
 }
 
 variable "use_spot_vms" {

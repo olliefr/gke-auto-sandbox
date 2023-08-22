@@ -14,10 +14,6 @@ Because it is meant for exploration and demos, some parts are configured differe
 * Input validation is done on a "best-effort" basis.
 * No backwards compatibility should be expected.
 
-<!-- TODO research how Spot VMs work with Autopilot clusters
-* [Spot VM instances](https://cloud.google.com/kubernetes-engine/docs/concepts/spot-vms) are used for cluster nodes by default.
--->
-
 You have been warned! It's good fun, though, so feel free to fork and play around with GKE, it's pretty cool tech, in my opinion.
 
 # Useful resources
@@ -34,14 +30,13 @@ GKE best practices and other related resources.
 
 Although this deployment is meant for proof-of-concept and experimental work, it implements many of the Google's [cluster security recommendations](https://cloud.google.com/kubernetes-engine/docs/how-to/hardening-your-cluster).
 
-* It is a [private cluster], so the cluster nodes do not have public IP addresses.
+* It is a [private cluster] so the cluster nodes do not have public IP addresses.
 <!-- * It has a _public endpoint_ with access limited to the _list of authorised control networks_; -->
 <!-- * It has [Dataplane V2](https://cloud.google.com/blog/products/containers-kubernetes/bringing-ebpf-and-cilium-to-google-kubernetes-engine) enabled so it can enforce Network Policies; -->
-<!-- * It uses [Spot VMs](https://cloud.google.com/compute/docs/instances/spot) for worker nodes. This reduces the running cost substantially. -->
 * [Cloud NAT] is configured to allow the cluster nodes and pods to access the Internet. So container registries located outside Google Cloud can be used.
 * The cluster nodes use a user-managed [least privilege service account].
 * The cluster is subscribed to the _Rapid_ [release channel].
-* [VPC Flow Logs] are enabled by default on the cluster subnetwork.
+* [VPC Flow Logs] are enabled by default on the cluster and admin subnetworks.
 
 Some other aspects which used to be a thing when this sandbox was for deployment of Standard GKE clusters are now ["pre-configured"](https://cloud.google.com/kubernetes-engine/docs/resources/autopilot-standard-feature-comparison) by GKE Autopilot, but it's still useful to remember what they are:
 
@@ -51,6 +46,7 @@ Some other aspects which used to be a thing when this sandbox was for deployment
 * [Secure Boot] and [Integrity Monitoring] are enabled.
 * [Workload Identity] is enabled.
 * A [hardened node image with `containerd` runtime](https://cloud.google.com/kubernetes-engine/docs/concepts/using-containerd) is used.
+* [Spot VM instances](https://cloud.google.com/kubernetes-engine/docs/concepts/spot-vms) are provisioned by Autopilot by default when [Spot Pods](https://cloud.google.com/kubernetes-engine/docs/how-to/autopilot-spot-pods) are requested. 
 
 [least privilege service account]: https://cloud.google.com/kubernetes-engine/docs/how-to/hardening-your-cluster#use_least_privilege_sa
 [Cloud NAT]: https://cloud.google.com/nat/docs/overview
@@ -107,8 +103,8 @@ terraform init && terraform apply -var="project=infernal-horse" -var="region=eur
 To avoid having to provide the input variable values on the command line, you can create a variable definitions file, such as `env.auto.tfvars` and define the values therein.
 
 ```hcl
-project = "<PROJECT_ID>"
-region  = "<REGION>"
+google_project = "<PROJECT_ID>"
+google_region  = "<REGION>"
 
 authorized_networks = [
   {
@@ -234,3 +230,40 @@ Just some ideas for future explorations.
 [Config Connector]: https://cloud.google.com/config-connector/docs/overview
 [Config Controller]: https://cloud.google.com/anthos-config-management/docs/concepts/config-controller-overview
 [Anthos Service Mesh]: https://cloud.google.com/service-mesh/docs/overview
+
+<!--
+TODO review, redraft, and find a new home for this information
+
+# IP address range planning
+# https://cloud.google.com/kubernetes-engine/docs/concepts/alias-ips
+#
+# Subnet primary IP address range (used for cluster nodes)
+# Once created, it
+#   + can expland at any time
+#   - cannot shrink
+#   - cannot change IP address scheme
+# Thus, it makes sense to start small. Let's say 16 nodes (which is 2^4).
+# Adresses for 16 nodes require (4+1) bits to represent (+1 is to accomodate for 4 reserved addresses),
+# thus the mask /(32-5) = /27. It's a bit more than what's needed, but losing
+# a bit would reduce the number of allowed nodes to 12. So, /27 it is.
+# So, the CIDR block for the primary IP adderess range (cluster nodes IP addresses) is /27.
+#
+# Next, the pod address range. There's a limit on the number of pods each node can host,
+# we change it from the default value of 110 to 32 (which is the default value for Autopilot clusters),
+# and it's more reasonable, in my opinion. Now that we know that each node can host no more than 32 = 2^5
+# pods, and we know that we can have at most 16 = 2^4 nodes, the total address space size is 2^5 * 2^4 = 2^9,
+# or 512. But this does not take into account the x2 rule for pod IP addresses (pods starting up and shutting
+# down). Thus, the true smallest value our pod IP address range can have is 2 * 512 = 1024, or 2^10.
+# This dictates the CIDR mask of /(32 - 10) = /22. What are the implications for the future scalability?
+#   + it is possible to replace a subnet's secondary IP address range
+#   - doing so is not supported because it has the potential to put the cluster in an unstable state
+#   + however, you can create additional Pod IP address ranges using discontiguous multi-Pod CIDR
+# So, if we were really short of IP addresses, we could stop at /22 and use the discontiguous multi-Pod CIDR
+# feature as and when needed. But we are not short of addresses, so I am going to upgrade /22 to /19, increasing
+# the Pod IP range eightfold (giving up three bits on the network part of the address).
+#
+# Finally, the Services secondary range. This range cannot be changed as long as a cluster uses it for Services (cluster IP addresses).
+# Unlike node and Pod IP address ranges, each cluster must have a unique subnet secondary IP address range for Services and cannot be sourced from a shared primary or secondary IP range.
+# On the other hand, we are not short of IP address space, and we don't anticipate having thousands and thousands of services.
+# Thus, the default (as if the secondary IP range assignment method was managed by GKE) size of /20, giving 4096 services, is good enough.
+-->
