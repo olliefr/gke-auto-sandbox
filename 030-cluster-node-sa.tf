@@ -27,13 +27,3 @@ resource "google_project_iam_member" "container_node_service_account" {
   role     = each.key
   member   = google_service_account.cluster_node.member
 }
-
-# TODO by itself this does not help. there must be another resource depending on this one later on!
-# Pause to give Google Cloud IAM a chance to sync. The IAM is only 'eventually' consistent.
-# Reference: https://cloud.google.com/iam/docs/access-change-propagation
-resource "time_sleep" "iam_nap" {
-  create_duration = "2m"
-  depends_on = [
-    google_project_iam_member.container_node_service_account,
-  ]
-}
