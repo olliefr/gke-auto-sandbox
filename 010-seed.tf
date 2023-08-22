@@ -17,13 +17,16 @@ locals {
   enable_services = distinct(compact(concat([
     "artifactregistry.googleapis.com",
     "cloudresourcemanager.googleapis.com",
+    "compute.googleapis.com",
     "container.googleapis.com",
     "dns.googleapis.com",
     "iam.googleapis.com",
     "iamcredentials.googleapis.com",
     "logging.googleapis.com",
     "monitoring.googleapis.com",
+    "pubsub.googleapis.com ",
     "serviceusage.googleapis.com",
+    "sts.googleapis.com",
   ], var.enable_services)))
 }
 
