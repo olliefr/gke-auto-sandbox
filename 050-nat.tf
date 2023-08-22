@@ -10,6 +10,7 @@ resource "google_compute_router" "default" {
   name     = "${google_compute_subnetwork.cluster_net.region}-router"
   network  = google_compute_network.custom_vpc.name
 }
+
 resource "google_compute_router_nat" "nat" {
   provider = google
   project  = data.google_project.default.project_id
@@ -22,10 +23,16 @@ resource "google_compute_router_nat" "nat" {
 
   # As described in the 'full reference' documentation page, this Cloud NAT gateway
   # is configured to apply to the nodes, Pods, and Services IP address ranges.
-  # FIXME why would a Kubernetes Service require NAT?
+  # FIXME why would a Kubernetes Service require NAT? it's in the docs though...
   subnetwork {
     name                    = google_compute_subnetwork.cluster_net.self_link
     source_ip_ranges_to_nat = ["ALL_IP_RANGES"]
+  }
+
+  # Piggyback the admin network onto the same NAT gateway.
+  subnetwork {
+    name                    = google_compute_subnetwork.admin_net.self_link
+    source_ip_ranges_to_nat = ["PRIMARY_IP_RANGE"]
   }
 
   # Cloud NAT logging configuration.
@@ -35,5 +42,3 @@ resource "google_compute_router_nat" "nat" {
     filter = var.nat_logs_filter
   }
 }
-
-# TODO add admin net to NAT?
