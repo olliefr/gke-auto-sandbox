@@ -11,11 +11,12 @@ locals {
 }
 
 # A dedicated service account for GKE cluster nodes.
-resource "google_service_account" "container_node" {
-  provider    = google
-  project     = data.google_project.default.project_id
-  account_id  = "container-node-minimal"
-  description = "Locked down account for GKE cluster nodes"
+resource "google_service_account" "cluster_node" {
+  provider     = google
+  project      = data.google_project.default.project_id
+  account_id   = "cluster-node"
+  display_name = "GKE Cluster Node (Autopilot)"
+  description  = "A locked-down identity for GKE cluster nodes to avoid default Compute Engine service account use."
 }
 
 # The IAM roles to grant on the project to the GKE cluster node service account.
@@ -24,7 +25,7 @@ resource "google_project_iam_member" "container_node_service_account" {
   project  = data.google_project.default.project_id
   for_each = toset(local.container_node_service_account_roles)
   role     = each.key
-  member   = google_service_account.container_node.member
+  member   = google_service_account.cluster_node.member
 }
 
 # TODO by itself this does not help. there must be another resource depending on this one later on!

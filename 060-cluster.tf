@@ -16,7 +16,7 @@ resource "google_container_cluster" "private" {
   cluster_autoscaling {
     autoscaling_profile = "OPTIMIZE_UTILIZATION"
     auto_provisioning_defaults {
-      service_account = google_service_account.container_node.email
+      service_account = google_service_account.cluster_node.email
     }
   }
   vertical_pod_autoscaling {
