@@ -10,3 +10,4 @@ provider_google.auto.tfvars
 
 # Other
 .idea/
+venv/
