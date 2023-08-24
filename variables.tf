@@ -20,9 +20,19 @@ variable "enable_services" {
   nullable    = false
 }
 
+variable "cluster_administrators" {
+  description = <<-EOT
+    The list of IAM principals who are granted administrative access to the bastion host and the GKE cluster.
+    A principal can be either a Google account or a Google Groups. By default, a group is assumed so the user IDs
+    must have a "user:" prefix. The group IDs may have a "group:" prefix but it is not mandatory.
+  EOT
+  type        = list(string)
+  nullable    = false
+}
+
 # 030-cluster-node-sa
 
-variable "container_node_service_account_roles" {
+variable "cluster_node_service_account_roles" {
   description = <<-EOT
     The list of IAM roles to grant on the project to the service account attached to GKE cluster nodes
     in addition to the minimal set of roles granted by this module.
@@ -190,29 +200,14 @@ variable "master_ipv4_cidr_block" {
 }
 
 variable "master_authorized_networks" {
-  description = "The CIDR blocks allowed to access the cluster control plane."
-  type = list(object({
-    cidr_block : string
-    display_name : string
-  }))
-  default  = []
+  description = "The map {name to CIDR} for IP ranges allowed to access the cluster control plane."
+  type        = map(string)
+  # Example:
+  # {
+  #   warning-publicly-accessible-endpoint : "0.0.0.0/0"
+  #   my-home-ip : "1.1.1.1/32"
+  # }
+  default  = {}
   nullable = false
-  # TODO can regex the display name as well but not now
-  # TODO try making this input variable a map of name to CIDR values. would it be more readable?
-  # [
-  #   {
-  #     cidr_block   = "0.0.0.0/0"
-  #     display_name = "warning-publicly-accessible-endpoint"
-  #   },
-  # ]
-  # TODO the message displayed by this validator is not very helpful as it does not say which item and which field was rejected
-  validation {
-    condition = try(alltrue([
-      for net in var.master_authorized_networks : alltrue([
-        can(cidrnetmask(net.cidr_block)),
-        length(net.display_name) > 0,
-      ])
-    ]), false)
-    error_message = "Must be a list of name to IPv4 CIDR mappings."
-  }
+  # TODO validate the map keys and values: keys must be legit IDs, and values are CIDRs
 }

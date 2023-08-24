@@ -1,6 +1,8 @@
 # The seed configuration sets up the provider and enables services on the existing target project.
 # TODO document the bootstrap process: create a project, add a service account, run Terraform with impersonation.
 # TODO add an option to create a new project (using two provider configurations)
+# FIXME technically, we should check if the region is UP (available) before deploying regional (and zonal) resources
+# https://registry.terraform.io/providers/hashicorp/google/latest/docs/data-sources/compute_regions
 
 provider "google" {
   project = var.google_project
@@ -13,6 +15,7 @@ provider "google-beta" {
 }
 
 locals {
+  # FIXME can distinct+compact+concat be replaced with setunion?
   # The services (APIs) to enable on the project, including those provided by the user.
   enable_services = distinct(compact(concat([
     "artifactregistry.googleapis.com",
@@ -40,13 +43,14 @@ data "google_project" "default" {
 # Enable necessary services (Google Cloud APIs)
 resource "google_project_service" "enabled" {
   provider = google
-  for_each = toset(local.enable_services)
   project  = data.google_project.default.project_id
-  service  = each.key
 
   # In long-lived projects: ok to leave the services on between the deployments.
   # In short-lived projects: does not matter what these settings are.
   # Thus, 'false' for both is the safest option.
   disable_dependent_services = false
   disable_on_destroy         = false
+
+  for_each = toset(local.enable_services)
+  service  = each.key
 }

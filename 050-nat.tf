@@ -5,15 +5,15 @@
 
 resource "google_compute_router" "default" {
   provider = google
-  project  = data.google_project.default.project_id
-  region   = var.google_region
+  project  = google_compute_subnetwork.cluster_net.project
+  region   = google_compute_subnetwork.cluster_net.region
+  network  = google_compute_subnetwork.cluster_net.network
   name     = "${google_compute_subnetwork.cluster_net.region}-router"
-  network  = google_compute_network.custom_vpc.name
 }
 
 resource "google_compute_router_nat" "nat" {
   provider = google
-  project  = data.google_project.default.project_id
+  project  = google_compute_router.default.project
   region   = google_compute_router.default.region
   router   = google_compute_router.default.name
   name     = "k8s-private-cluster-nat"

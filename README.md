@@ -1,4 +1,4 @@
-# Google Kubernetes Engine sandbox
+ Google Kubernetes Engine sandbox
 
 > **Warning**
 > This is a research prototype. Think before you deploy :smiling_imp:
@@ -20,11 +20,13 @@ You have been warned! It's good fun, though, so feel free to fork and play aroun
 
 GKE best practices and other related resources.
 
-* [Terraform for opinionated GKE clusters](https://github.com/terraform-google-modules/terraform-google-kubernetes-engine)
 * [Autopilot vs Standard clusters feature comparison](https://cloud.google.com/kubernetes-engine/docs/resources/autopilot-standard-feature-comparison)
+* [GKE Autopilot security capabilities](https://cloud.google.com/kubernetes-engine/docs/concepts/autopilot-security)
 * [Best practices for GKE networking](https://cloud.google.com/kubernetes-engine/docs/best-practices/networking)
+* [Security overview](https://cloud.google.com/kubernetes-engine/docs/concepts/security-overview)
 * [Harden your cluster's security](https://cloud.google.com/kubernetes-engine/docs/how-to/hardening-your-cluster)
-* [Best practices for running cost-optimized Kubernetes applications on GKE](https://cloud.google.com/architecture/best-practices-for-running-cost-effective-kubernetes-applications-on-gke). Includes a great [summary](https://cloud.google.com/architecture/best-practices-for-running-cost-effective-kubernetes-applications-on-gke#summary_of_best_practices) checklist.
+* [Best practices for running cost-optimized Kubernetes applications on GKE](https://cloud.google.com/architecture/best-practices-for-running-cost-effective-kubernetes-applications-on-gke). Includes a great [summary checklist](https://cloud.google.com/architecture/best-practices-for-running-cost-effective-kubernetes-applications-on-gke#summary_of_best_practices).
+* [Terraform for opinionated GKE clusters](https://github.com/terraform-google-modules/terraform-google-kubernetes-engine)
 
 ## Architecture
 
@@ -32,7 +34,6 @@ Although this deployment is meant for proof-of-concept and experimental work, it
 
 * It is a [private cluster] so the cluster nodes do not have public IP addresses and there is no public endpoint for the control plane.
 <!-- * It has a _public endpoint_ with access limited to the _list of authorised control networks_; -->
-<!-- * It has [Dataplane V2](https://cloud.google.com/blog/products/containers-kubernetes/bringing-ebpf-and-cilium-to-google-kubernetes-engine) enabled so it can enforce Network Policies; -->
 * [Cloud NAT] is configured to allow the cluster nodes and pods to access the Internet. So container registries located outside Google Cloud can be used.
 * The cluster nodes use a user-managed [least privilege service account].
 * The cluster is subscribed to the _Rapid_ [release channel].
@@ -45,9 +46,10 @@ Some other aspects which used to be a thing when this sandbox was for deployment
 * [Shielded GKE nodes] feature is enabled.
 * [Secure Boot] and [Integrity Monitoring] are enabled.
 * [Intranode visibility] is enabled.
+* [Dataplane V2](https://cloud.google.com/blog/products/containers-kubernetes/bringing-ebpf-and-cilium-to-google-kubernetes-engine) is enabled. It also provides network policy enforcement and logging.
 * [Workload Identity] is enabled.
 * A [hardened node image with `containerd` runtime](https://cloud.google.com/kubernetes-engine/docs/concepts/using-containerd) is used.
-* [Spot VM instances](https://cloud.google.com/kubernetes-engine/docs/concepts/spot-vms) are provisioned by Autopilot by default when [Spot Pods](https://cloud.google.com/kubernetes-engine/docs/how-to/autopilot-spot-pods) are requested.
+* [Spot VMs](https://cloud.google.com/kubernetes-engine/docs/concepts/spot-vms) are provisioned by Autopilot automatically when [Spot Pods](https://cloud.google.com/kubernetes-engine/docs/how-to/autopilot-spot-pods) are requested.
 
 [least privilege service account]: https://cloud.google.com/kubernetes-engine/docs/how-to/hardening-your-cluster#use_least_privilege_sa
 [Cloud NAT]: https://cloud.google.com/nat/docs/overview

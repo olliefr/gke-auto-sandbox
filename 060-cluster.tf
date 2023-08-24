@@ -1,16 +1,18 @@
 locals {
-  authorized_networks = []
+  # Master authorised networks must include the admin subnet. The rest comes from the user.
+  master_authorized_networks = merge({
+    (google_compute_subnetwork.admin_net.name) : google_compute_subnetwork.admin_net.ip_cidr_range
+  }, var.master_authorized_networks)
 }
-
 
 resource "google_container_cluster" "private" {
   provider         = google-beta
-  project          = data.google_project.default.project_id
-  location         = var.google_region
+  project          = google_compute_subnetwork.cluster_net.project
+  location         = google_compute_subnetwork.cluster_net.region
   name             = "private-cluster-0"
   enable_autopilot = true
 
-  network    = google_compute_network.custom_vpc.id
+  network    = google_compute_subnetwork.cluster_net.network
   subnetwork = google_compute_subnetwork.cluster_net.id
 
   cluster_autoscaling {
@@ -51,6 +53,9 @@ resource "google_container_cluster" "private" {
     }
   }
 
+  # FIXME i believe this should be pre-configured in Autopilot?
+  networking_mode = "VPC_NATIVE"
+
   # The CIDR ranges for Pods and Services can be given back to GKE to manage, but I don't want that.
   # By providing the names of the existing secondary ranges in the cluster's subnetwork, 
   # we define what CIDRs should be used so GKE is not going to create any ranges automatically.
@@ -81,21 +86,16 @@ resource "google_container_cluster" "private" {
   # to the control plane from external IP addresses, and from internal IP addresses other than nodes and Pods.
   master_authorized_networks_config {
     dynamic "cidr_blocks" {
-      for_each = var.master_authorized_networks
+      for_each = local.master_authorized_networks
       content {
-        cidr_block   = cidr_blocks.value.cidr_block
-        display_name = cidr_blocks.value.display_name
+        display_name = cidr_blocks.key
+        cidr_block   = cidr_blocks.value
       }
     }
   }
 
-  # Dataplane V2
-  # https://cloud.google.com/blog/products/containers-kubernetes/bringing-ebpf-and-cilium-to-google-kubernetes-engine
-  # https://cilium.io/blog/2020/08/19/google-chooses-cilium-for-gke-networking
-  # https://github.com/hashicorp/terraform-provider-google/issues/7207
+  # FIXME this should be "pre-configured" in Autopilot. usually the provider complains about unnecessary field, but not here?
+  # GKE Dataplane V2: eBPF + Kubernetes Network Policy logging and enforcement
+  # Reference: https://cloud.google.com/kubernetes-engine/docs/concepts/dataplane-v2
   datapath_provider = "ADVANCED_DATAPATH"
-
-  # Network policy enforcement is built into Dataplane V2.
-  # You do not need to enable network policy enforcement in clusters that use Dataplane V2.
-  # https://cloud.google.com/kubernetes-engine/docs/how-to/network-policy#enabling_network_policy_enforcement
 }
