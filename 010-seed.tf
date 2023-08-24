@@ -26,7 +26,7 @@ locals {
     "iamcredentials.googleapis.com",
     "logging.googleapis.com",
     "monitoring.googleapis.com",
-    "pubsub.googleapis.com ",
+    "pubsub.googleapis.com",
     "serviceusage.googleapis.com",
     "sts.googleapis.com",
   ], var.enable_services)
