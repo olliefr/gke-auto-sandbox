@@ -15,9 +15,8 @@ provider "google-beta" {
 }
 
 locals {
-  # FIXME can distinct+compact+concat be replaced with setunion?
   # The services (APIs) to enable on the project, including those provided by the user.
-  enable_services = distinct(compact(concat([
+  enable_services_set = setunion([
     "artifactregistry.googleapis.com",
     "cloudresourcemanager.googleapis.com",
     "compute.googleapis.com",
@@ -30,7 +29,7 @@ locals {
     "pubsub.googleapis.com ",
     "serviceusage.googleapis.com",
     "sts.googleapis.com",
-  ], var.enable_services)))
+  ], var.enable_services)
 }
 
 # Used by other resources to reference the target project by its ID.
@@ -51,6 +50,6 @@ resource "google_project_service" "enabled" {
   disable_dependent_services = false
   disable_on_destroy         = false
 
-  for_each = toset(local.enable_services)
+  for_each = local.enable_services_set
   service  = each.key
 }

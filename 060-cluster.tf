@@ -98,4 +98,12 @@ resource "google_container_cluster" "private" {
   # GKE Dataplane V2: eBPF + Kubernetes Network Policy logging and enforcement
   # Reference: https://cloud.google.com/kubernetes-engine/docs/concepts/dataplane-v2
   datapath_provider = "ADVANCED_DATAPATH"
+
+  depends_on = [
+    google_project_service.enabled["artifactregistry.googleapis.com"],
+    google_project_service.enabled["container.googleapis.com"],
+    google_project_service.enabled["dns.googleapis.com"],
+    google_project_service.enabled["logging.googleapis.com"],
+    google_project_service.enabled["monitoring.googleapis.com"],
+  ]
 }

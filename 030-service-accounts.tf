@@ -39,6 +39,10 @@ resource "google_service_account" "cluster_node" {
   account_id   = "cluster-node"
   display_name = "GKE Cluster Node (Autopilot)"
   description  = "A locked-down identity for GKE cluster nodes."
+
+  depends_on = [
+    google_project_service.enabled["iam.googleapis.com"],
+  ]
 }
 
 # The IAM roles to grant on the project to the GKE cluster node service account.
@@ -57,6 +61,10 @@ resource "google_service_account" "bastion" {
   account_id   = "cluster-admin-jump-box"
   display_name = "Smol Jump Box (GKE Admin)"
   description  = "A locked-down identity for jump boxes to manage GKE private clusters via IAP."
+
+  depends_on = [
+    google_project_service.enabled["iam.googleapis.com"],
+  ]
 }
 
 # Cluster administrators need this to connect to the jump box.

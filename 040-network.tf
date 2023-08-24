@@ -5,6 +5,10 @@ resource "google_compute_network" "custom_vpc" {
   project                 = data.google_project.default.project_id
   name                    = "cluster-vpc-0"
   auto_create_subnetworks = false
+
+  depends_on = [
+    google_project_service.enabled["compute.googleapis.com"],
+  ]
 }
 
 resource "google_compute_subnetwork" "cluster_net" {
