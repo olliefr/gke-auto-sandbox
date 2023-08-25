@@ -98,7 +98,7 @@ For GKE Autopilot clusters, VPC-native traffic routing is enabled by default. Se
 * Autopilot has a maximum Pods per node of [32](https://cloud.google.com/kubernetes-engine/quotas#limits_per_cluster). 
 * Because of Pod churn, twice that number of IP addresses may be required. So, there are `64` IP addresses allocated per node, or `2^6`.
 
-Let's consider two scenarios - a big and a small.
+Let's consider two scenarios - a big and a small. A [CIDR range visualizer](https://cidr.xyz/) will be useful!
 
 ### Go **BIG**!
 

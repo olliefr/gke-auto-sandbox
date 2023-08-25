@@ -85,6 +85,10 @@ resource "google_compute_firewall" "internal_admin_net_to_cluster_net" {
     protocol = "tcp"
     ports    = ["443"]
   }
+
+  log_config {
+    metadata = "INCLUDE_ALL_METADATA"
+  }
 }
 
 # Ingress into the admin subnet from IAP using TCP forwarding
@@ -105,5 +109,9 @@ resource "google_compute_firewall" "external_iap_to_admin_net" {
   allow {
     protocol = "tcp"
     ports    = ["22"]
+  }
+
+  log_config {
+    metadata = "INCLUDE_ALL_METADATA"
   }
 }

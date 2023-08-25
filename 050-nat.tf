@@ -21,6 +21,9 @@ resource "google_compute_router_nat" "nat" {
   nat_ip_allocate_option             = "AUTO_ONLY"
   source_subnetwork_ip_ranges_to_nat = "LIST_OF_SUBNETWORKS"
 
+  # To avoid drift, set this to 64.
+  min_ports_per_vm = 64
+
   # As described in the 'full reference' documentation page, this Cloud NAT gateway
   # is configured to apply to the nodes, Pods, and Services IP address ranges.
   # FIXME why would a Kubernetes Service require NAT? it's in the docs though...

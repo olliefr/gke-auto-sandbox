@@ -67,4 +67,8 @@ resource "google_iap_tunnel_instance_iam_member" "bastion_iap_tunnel" {
   role     = "roles/iap.tunnelResourceAccessor"
   for_each = local.cluster_administrators_set
   member   = each.key
+
+  depends_on = [
+    google_project_service.enabled["iap.googleapis.com"],
+  ]
 }

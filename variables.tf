@@ -144,7 +144,7 @@ variable "nat_logs_enabled" {
 variable "nat_logs_filter" {
   description = "Cloud NAT logs filtering - errors, translations, or both."
   type        = string
-  default     = "ERRORS_ONLY"
+  default     = "ALL"
   nullable    = false
   validation {
     condition     = contains(["ERRORS_ONLY", "TRANSLATIONS_ONLY", "ALL"], var.nat_logs_filter)
