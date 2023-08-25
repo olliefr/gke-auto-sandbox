@@ -44,16 +44,16 @@ variable "cluster_node_service_account_roles" {
 
 # 040-network
 
-variable "cluster_admin_subnetwork_ipv4_cidr" {
+variable "admin_subnetwork_ipv4_cidr" {
   description = <<-EOT
     The primary IP range for the VPC subnetwork which will be used for GKE private cluster
     administration via the cluster's private endpoint. This network is on the master authorised networks list.
   EOT
   type        = string
-  default     = "192.168.100.0/28"
+  default     = "10.10.10.0/24"
   nullable    = false
   validation {
-    condition     = can(cidrnetmask(var.cluster_admin_subnetwork_ipv4_cidr))
+    condition     = can(cidrnetmask(var.admin_subnetwork_ipv4_cidr))
     error_message = "Must be a valid IPv4 CIDR, as defined in RFC 4632 section 3.1."
   }
 }
@@ -61,7 +61,7 @@ variable "cluster_admin_subnetwork_ipv4_cidr" {
 variable "cluster_subnetwork_ipv4_cidr" {
   description = "The primary IP range for the VPC subnetwork to which the GKE cluster will be connected."
   type        = string
-  default     = "10.128.0.0/27"
+  default     = "10.0.0.0/24"
   nullable    = false
   validation {
     condition     = can(cidrnetmask(var.cluster_subnetwork_ipv4_cidr))
@@ -71,11 +71,11 @@ variable "cluster_subnetwork_ipv4_cidr" {
 
 variable "pods_ipv4_cidr" {
   description = <<-EOT
-    A secondary IP range for the VPC subnetwork to which the GKE cluster will be connected.
+    A secondary IP range for the VPC subnetwork to which the GKE cluster will be connected (`--cluster-ipv4-cidr`).
     To be used for Kubernetes Pods.
   EOT
   type        = string
-  default     = "10.1.0.0/19"
+  default     = "192.168.0.0/19"
   nullable    = false
   validation {
     condition     = can(cidrnetmask(var.pods_ipv4_cidr))
@@ -85,14 +85,13 @@ variable "pods_ipv4_cidr" {
 
 variable "services_ipv4_cidr" {
   description = <<-EOT
-    A secondary IP range for the VPC subnetwork to which the GKE cluster will be connected.
-    To be used for Kubernetes Services.
+    A secondary IP range for the VPC subnetwork to which the GKE cluster will be connected (`--services-ipv4-cidr`).
+    To be used for Kubernetes Services. If unset or null, it gets the Google-managed value of `34.118.224.0/20`.
   EOT
   type        = string
-  default     = "10.2.0.0/20"
-  nullable    = false
+  default     = null
   validation {
-    condition     = can(cidrnetmask(var.services_ipv4_cidr))
+    condition     = (var.services_ipv4_cidr == null) ? true : can(cidrnetmask(var.services_ipv4_cidr))
     error_message = "Must be a valid IPv4 CIDR, as defined in RFC 4632 section 3.1."
   }
 }
@@ -188,13 +187,13 @@ variable "private_cluster_master_global_access" {
   nullable    = false
 }
 
-variable "master_ipv4_cidr_block" {
-  description = "The CIDR range for hosted GKE master network (must be /28)."
+variable "master_ipv4_cidr" {
+  description = "IPv4 CIDR range to use for the GKE cluster master network (`--master_ipv4_cidr`). Must be /28."
   type        = string
   default     = "172.16.0.0/28"
   nullable    = false
   validation {
-    condition     = can(cidrnetmask(var.master_ipv4_cidr_block))
+    condition     = can(cidrnetmask(var.master_ipv4_cidr)) && endswith(var.master_ipv4_cidr, "/28")
     error_message = "Requires a valid IPv4 CIDR, as defined in RFC 4632 section 3.1."
   }
 }

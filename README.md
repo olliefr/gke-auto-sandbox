@@ -89,6 +89,57 @@ If you fancy doing it *the hard way* &ndash; and there is time and place for suc
 * Private Logs Viewer (`roles/logging.privateLogViewer`)
 * Moar?!
 
+## IP address ranges
+
+For GKE Autopilot clusters, VPC-native traffic routing is enabled by default. See [VPC-native clusters](https://cloud.google.com/kubernetes-engine/docs/concepts/alias-ips).
+
+[Pod CIDR ranges in Autopilot clusters](https://cloud.google.com/kubernetes-engine/docs/how-to/flexible-pod-cidr#cidr_settings_for_clusters) lists the default settings for Autopilot cluster CIDR sizes.
+
+* Autopilot has a maximum Pods per node of [32](https://cloud.google.com/kubernetes-engine/quotas#limits_per_cluster). 
+* Because of Pod churn, twice that number of IP addresses may be required. So, there are `64` IP addresses allocated per node, or `2^6`.
+
+Let's consider two scenarios - a big and a small.
+
+### Go **BIG**!
+
+* If we'd like to have `1024` cluster nodes, or `2^10`, the total required IP space for Pods is `2^10 * 2^6 = 2^16`.
+* The VPC subnet secondary IP range for Pods does not have further restrictions.
+* So the size of the Pods CIDR is `/16`. I pick `192.168.0.0/16`.
+* The primary range must accommodate `2^10` nodes and because it's the primary range `4` IP addresses are reserved.
+* So, `2^11` bits are needed for the host part to represent the nodes. This leaves with `32-11=21` bits for the network part.
+* I choose `10.0.248.0/21` for the cluster subnet primary IP range.
+* In the third octet: `248 = 2^7 + 2^6 + 2^5 + 2^4 + 2^3`, and the lowest three bits are part of the host number.
+
+To sum up, in the **BIG** scenario, we have:
+
+* Nodes: `cluster_subnetwork_ipv4_cidr = "10.0.248.0/21"`. This can get us `2044` nodes. [Limits per cluster](https://cloud.google.com/kubernetes-engine/quotas#limits_per_cluster) state that running more than 400 nodes may require lifting a cluster size quota.
+* Pods: `pods_ipv4_cidr = "192.168.0.0/16"`. This gives `65536` Pods.
+* Services: `services_ipv4_cidr = null` or unset and so it gets the default value of `34.118.224.0/20`. This accommodates up to `4096` Services.
+
+This is, *obviously*, too big for a sandbox 😈
+
+### Go *smol*
+
+* Let's scale down the cluster node number to `128`, or `2^7`. The total required IP space for Pods is `2^7 * 2^6 = 2^13`.
+* So the size of the Pods CIDR is `/(32 - 13) = /19`. I pick `192.168.0.0/19` for convenience.
+* The primary range must accommodate `2^7` nodes and because it's the primary range `4` IP addresses are reserved.
+* At this small scale those four addresses actually make a difference - one can't fit `128` nodes into `7` bits.
+* So, `2^8` bits are needed for the host part to represent the nodes. This leaves with `32-8=24` bits for the network part.
+* I choose `10.0.0.0/24` for the cluster subnet primary IP range.
+* The last octet provides `2^8 - 4 = 255 - 4 = 251` cluster nodes.
+
+This leaves us with:
+
+* Nodes: `cluster_subnetwork_ipv4_cidr = "10.0.0.0/24"`. This can get us `252` nodes. 
+* Pods: `pods_ipv4_cidr = "192.168.0.0/19"`. This gives `8192` Pods.
+* Services: `services_ipv4_cidr = null` or unset and so it gets the default value of `34.118.224.0/20`. This accommodates up to `4096` Services.
+
+These values are much more reasonable for the sandbox 😉 So they are the default values for Terraform input variables.
+
+### Custom IP range for Services
+
+In the preceding two scenarios, I went with the Google-managed IP range for Services. This was done for convenience. Should I wish to provide my own custom value, it is possible. I'd probably go for `/20` anyway.
+
 ## Quick start
 
 Clone the repo and you are good to go! You can provide the input variables' values as command-line parameters to Terraform CLI:
@@ -101,7 +152,7 @@ terraform init && terraform apply -var="project=infernal-horse" -var="region=eur
 * You _may_ set `authorized_networks` to enable access ot the cluster's endpoint from a public IP address. You still would have to authenticate.
 
 > **Note**
-> The default value for `authorized_networks` does not allows any public access to the cluster endpoint.
+> The default value for `authorized_networks` does not allow any public access to the cluster endpoint.
 
 To avoid having to provide the input variable values on the command line, you can create a variable definitions file, such as `env.auto.tfvars` and define the values therein.
 

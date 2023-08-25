@@ -2,6 +2,10 @@
 # Best practice: https://cloud.google.com/kubernetes-engine/docs/how-to/hardening-your-cluster#use_least_privilege_sa
 
 locals {
+  # TODO fix cluster node SA permissions: https://cloud.google.com/artifact-registry/docs/access-control#gcp-permissions
+  # "You must configure or modify permissions yourself if:
+  #  You are using a user-provided service account to interact with Artifact Registry instead of the default service account."
+  #
   # The service account roles can be customised by the user.
   # FIXME why there's two different options for "minimal" GKE node service account?
   # Option A: https://cloud.google.com/iam/docs/understanding-roles#container.nodeServiceAccount
@@ -13,6 +17,7 @@ locals {
     "roles/monitoring.viewer",
     "roles/monitoring.metricWriter",
     "roles/stackdriver.resourceMetadata.writer",
+    "roles/artifactregistry.reader",
   ], var.cluster_node_service_account_roles)
 
   # TODO make the set of roles customisable with a variable like for the cluster node service account

@@ -13,9 +13,10 @@ resource "google_compute_instance" "bastion" {
   name         = "cluster-admin-bastion"
   machine_type = "f1-micro"
 
+  # To enable 2FA, must set *both* 'enable-oslogin' and 'enable-oslogin-2fa'.
   metadata = {
-    # TODO make this (optional) variable. my security config is strict, but it's not for everyone
-    enable-oslogin-2fa : "TRUE"
+    enable-oslogin : "TRUE"
+    #    enable-oslogin-2fa : "TRUE"
   }
   boot_disk {
     initialize_params {

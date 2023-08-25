@@ -40,19 +40,6 @@ resource "google_container_cluster" "private" {
     cluster_dns_domain = "cluster.local"
   }
 
-  # It's bloody hard to extract the name from google_compute_subnetwork.cluster_net.secondary_ip_range data structure,
-  # if you don't know what exactly that name is! I chose to validate like this, instead. Judge me!
-  lifecycle {
-    precondition {
-      condition = try(alltrue([
-        length(google_compute_subnetwork.cluster_net.secondary_ip_range) == 2,
-        strcontains(google_compute_subnetwork.cluster_net.secondary_ip_range[0].range_name, "pod"),
-        strcontains(google_compute_subnetwork.cluster_net.secondary_ip_range[1].range_name, "service")
-      ]), false)
-      error_message = "Secondary ranges for cluster subnetwork appear to be defined in a format this resource did not expect"
-    }
-  }
-
   # FIXME i believe this should be pre-configured in Autopilot?
   networking_mode = "VPC_NATIVE"
 
@@ -61,14 +48,14 @@ resource "google_container_cluster" "private" {
   # we define what CIDRs should be used so GKE is not going to create any ranges automatically.
   ip_allocation_policy {
     cluster_secondary_range_name  = google_compute_subnetwork.cluster_net.secondary_ip_range[0].range_name
-    services_secondary_range_name = google_compute_subnetwork.cluster_net.secondary_ip_range[1].range_name
+    services_secondary_range_name = var.services_ipv4_cidr != null ? google_compute_subnetwork.cluster_net.secondary_ip_range[1].range_name : null
   }
 
   # Access to cluster endpoints docs: https://cloud.google.com/kubernetes-engine/docs/concepts/private-cluster-concept#overview
   private_cluster_config {
     enable_private_endpoint = true
     enable_private_nodes    = true
-    master_ipv4_cidr_block  = var.master_ipv4_cidr_block
+    master_ipv4_cidr_block  = var.master_ipv4_cidr
 
     # Use with private clusters to allow access to the master's private endpoint from any Google Cloud region
     # or on-premises environment. This is the `--enable-master-global-access` argument in gcloud CLI.

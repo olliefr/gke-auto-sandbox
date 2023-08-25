@@ -25,9 +25,16 @@ resource "google_compute_subnetwork" "cluster_net" {
     range_name    = "k8s-pods"
     ip_cidr_range = var.pods_ipv4_cidr
   }
-  secondary_ip_range {
-    range_name    = "k8s-services"
-    ip_cidr_range = var.services_ipv4_cidr
+
+  # (Recent) GKE Autopilot assigns IP addresses for Services from a Google-managed range by default: 34.118.224.0/20
+  # Allow to override it, if need be. But happy to go with the auto-assigned IP range by default.
+  # https://cloud.google.com/kubernetes-engine/docs/concepts/alias-ips#managed_by_default
+  dynamic "secondary_ip_range" {
+    for_each = (var.services_ipv4_cidr != null) ? [var.services_ipv4_cidr] : []
+    content {
+      range_name    = "k8s-services"
+      ip_cidr_range = secondary_ip_range.value
+    }
   }
 
   # VPC Flow Logs configuration
@@ -44,10 +51,10 @@ resource "google_compute_subnetwork" "admin_net" {
   provider = google
   project  = google_compute_network.custom_vpc.project
   network  = google_compute_network.custom_vpc.id
-  name     = "cluster-admin-net-0"
+  name     = "admin-net-0"
   region   = var.google_region
 
-  ip_cidr_range            = var.cluster_admin_subnetwork_ipv4_cidr
+  ip_cidr_range            = var.admin_subnetwork_ipv4_cidr
   private_ip_google_access = true
 
   log_config {
@@ -72,7 +79,7 @@ resource "google_compute_firewall" "internal_admin_net_to_cluster_net" {
   # TODO the cluster name should come from a variable
 
   source_service_accounts = [google_service_account.bastion.email]
-  destination_ranges      = [var.master_ipv4_cidr_block]
+  destination_ranges      = [var.master_ipv4_cidr]
 
   allow {
     protocol = "tcp"
