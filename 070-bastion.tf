@@ -16,7 +16,7 @@ resource "google_compute_instance" "bastion" {
   # To enable 2FA, must set *both* 'enable-oslogin' and 'enable-oslogin-2fa'.
   metadata = {
     enable-oslogin : "TRUE"
-    #    enable-oslogin-2fa : "TRUE"
+    enable-oslogin-2fa : "TRUE"
   }
   boot_disk {
     initialize_params {
@@ -25,7 +25,7 @@ resource "google_compute_instance" "bastion" {
   }
   network_interface {
     subnetwork = google_compute_subnetwork.admin_net.self_link
-    # By omitting access_config block we ensure that no public IP address is allocated.
+    # By omitting access_config {} we ensure that no public IP address is assigned to this instance.
   }
 
   lifecycle {
@@ -34,6 +34,10 @@ resource "google_compute_instance" "bastion" {
       error_message = "The bastion deployment region must have at least one available zone."
     }
   }
+
+  depends_on = [
+    google_project_service.enabled["compute.googleapis.com"],
+  ]
 }
 
 # Cluster administrators need this to connect to the jump box
@@ -47,6 +51,10 @@ resource "google_compute_instance_iam_member" "bastion_os_admin_login" {
   role          = "roles/compute.osAdminLogin"
   for_each      = local.cluster_administrators_set
   member        = each.key
+
+  depends_on = [
+    google_project_service.enabled["iam.googleapis.com"],
+  ]
 }
 
 resource "google_compute_instance_iam_member" "bastion_instance_admin_v1" {
@@ -57,6 +65,10 @@ resource "google_compute_instance_iam_member" "bastion_instance_admin_v1" {
   role          = "roles/compute.instanceAdmin.v1"
   for_each      = local.cluster_administrators_set
   member        = each.key
+
+  depends_on = [
+    google_project_service.enabled["iam.googleapis.com"],
+  ]
 }
 
 resource "google_iap_tunnel_instance_iam_member" "bastion_iap_tunnel" {
@@ -69,6 +81,7 @@ resource "google_iap_tunnel_instance_iam_member" "bastion_iap_tunnel" {
   member   = each.key
 
   depends_on = [
+    google_project_service.enabled["iam.googleapis.com"],
     google_project_service.enabled["iap.googleapis.com"],
   ]
 }

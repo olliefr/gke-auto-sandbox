@@ -25,8 +25,37 @@ resource "google_container_cluster" "private" {
     enabled = true
   }
 
-  cluster_telemetry {
-    type = "ENABLED"
+  # cluster_telemetry {} is obsolete
+  # https://github.com/hashicorp/terraform-provider-google/issues/10820#issuecomment-1693782669
+
+  # https://cloud.google.com/kubernetes-engine/docs/reference/rest/v1/projects.locations.clusters#loggingcomponentconfig
+  logging_config {
+    enable_components = [
+      "SYSTEM_COMPONENTS",
+      "WORKLOADS",
+      "APISERVER",
+      "SCHEDULER",
+      "CONTROLLER_MANAGER",
+    ]
+  }
+
+  # https://cloud.google.com/kubernetes-engine/docs/reference/rest/v1/projects.locations.clusters#monitoringconfig
+  monitoring_config {
+    enable_components = [
+      "SYSTEM_COMPONENTS",
+      "APISERVER",
+      "SCHEDULER",
+      "CONTROLLER_MANAGER",
+#      TODO the rest requires Prometheus
+#      "STORAGE",
+#      "POD",
+#      "DEPLOYMENT",
+#      "STATEFULSET",
+#      "DAEMONSET",
+#      "HPA",
+    ]
+    # TODO add Google Cloud Managed Service for Prometheus (will need extra configuration via PodMonitoring resources as well)
+    # https://cloud.google.com/stackdriver/docs/managed-prometheus
   }
 
   release_channel {
@@ -40,7 +69,7 @@ resource "google_container_cluster" "private" {
     cluster_dns_domain = "cluster.local"
   }
 
-  # FIXME i believe this should be pre-configured in Autopilot?
+  # For documentation purposes. The networking mode is pre-configured in Autopilot but the provider doesn't complain here.
   networking_mode = "VPC_NATIVE"
 
   # The CIDR ranges for Pods and Services can be given back to GKE to manage, but I don't want that.
@@ -88,6 +117,7 @@ resource "google_container_cluster" "private" {
 
   depends_on = [
     google_project_service.enabled["artifactregistry.googleapis.com"],
+    google_project_service.enabled["compute.googleapis.com"],
     google_project_service.enabled["container.googleapis.com"],
     google_project_service.enabled["dns.googleapis.com"],
     google_project_service.enabled["logging.googleapis.com"],

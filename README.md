@@ -27,6 +27,7 @@ GKE best practices and other related resources.
 * [Harden your cluster's security](https://cloud.google.com/kubernetes-engine/docs/how-to/hardening-your-cluster)
 * [Best practices for running cost-optimized Kubernetes applications on GKE](https://cloud.google.com/architecture/best-practices-for-running-cost-effective-kubernetes-applications-on-gke). Includes a great [summary checklist](https://cloud.google.com/architecture/best-practices-for-running-cost-effective-kubernetes-applications-on-gke#summary_of_best_practices).
 * [Terraform for opinionated GKE clusters](https://github.com/terraform-google-modules/terraform-google-kubernetes-engine)
+* [Production grade GKE network deployment, in 3 easy steps](https://medium.com/@pbijjala/3-key-best-practices-for-gke-deployment-4fa132e157e2).
 
 ## Architecture
 
