@@ -16,7 +16,9 @@ resource "google_container_cluster" "private" {
   subnetwork = google_compute_subnetwork.cluster_net.id
 
   cluster_autoscaling {
-    autoscaling_profile = "OPTIMIZE_UTILIZATION"
+    # FIXME is autoscaling_profile even applicable to Autopilot?
+    # autoscaling_profile = "OPTIMIZE_UTILIZATION" | "BALANCED"
+    # autoscaling_profile = "BALANCED"
     auto_provisioning_defaults {
       service_account = google_service_account.cluster_node.email
     }
