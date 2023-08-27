@@ -127,3 +127,4 @@ resource "google_container_cluster" "private" {
 }
 
 # TODO switch traffic from GCR to AR
+# TODO tags and labels for the cluster (optional)

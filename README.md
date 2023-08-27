@@ -1,24 +1,40 @@
- Google Kubernetes Engine sandbox
+# Google Kubernetes Engine sandbox
 
 > **Warning**
-> This is a research prototype. Think before you deploy :smiling_imp:
+> This is an **experimental rig**, not a blueprint for **production**. Think before you deploy :smiling_imp:
 
-This Terraform configuration deploys a sandbox for experimenting with [GKE Autopilot](https://cloud.google.com/kubernetes-engine/docs/concepts/autopilot-overview) private clusters.
+This [Terraform](https://www.terraform.io/) module deploys a complete environment for experimentation with [GKE Autopilot](https://cloud.google.com/kubernetes-engine/docs/concepts/autopilot-overview) clusters. All you need is an existing Google Cloud project.
 
-Because it is meant for exploration and demos, some parts are configured differently from what you'd expect to see in a *production* system. The most prominent deviations are:
+The environment consists of the following parts:
 
-* A *lot* of telemetry is collected. Logging and monitoring levels are set well above their default values.
-* All Google Cloud resources for the cluster are deployed directly from this Terraform module with no extra dependencies.
-* The latest versions of Terraform and Terraform Google provider are used.
-* Some resources are deployed using [Google-beta provider](https://registry.terraform.io/providers/hashicorp/google-beta/latest).
-* Input validation is done on a "best-effort" basis.
-* No backwards compatibility should be expected.
+* Regional GKE Autopilot cluster. The cluster nodes are private and access to the public endpoint is disabled.
+* Cloud NAT configuration to enable *outbound* Internet access for cluster nodes.
+* Cloud DNS configuration to enable Private Google Access (PGA) on the cluster's subnet.
+* Tiny Linux-based bastion host with a private IP. The host is not directly accessible from the Internet.
+* Identity-Aware Proxy (IAP) configuration for connecting to the bastion host *from anywhere* in a *secure* manner.
+* Least-privileged service accounts for the cluster nodes and for the bastion host.
+* A VPC network for the cluster and the bastion host.
+* Firewall rules.
 
-You have been warned! It's good fun, though, so feel free to fork and play around with GKE, it's pretty cool tech, in my opinion.
+Some notable configuration choices:
+
+* This Terraform module is self-contained. Happy hacking!
+* Recent versions of Terraform and Terraform Google provider are used. Play with the latest features!
+* Some resources are deployed with [Google-beta provider](https://registry.terraform.io/providers/hashicorp/google-beta/latest) to enable access to cutting-edge features.
+* A *lot* of logs and metrics are collected: VPC Flow Logs, firewall rules logging, Cloud NAT logging, IAP access logs, and more.
+* No maintenance schedule is set for the cluster. This avoids delays when making changes to cluster configuration.
+* Backwards compatibility between the module versions should not be expected.
+
+<!-- 
 
 # Useful resources
 
-GKE best practices and other related resources.
+Links to documentations, best practices, and other helpful resources.
+
+* [Private clusters in GKE](https://cloud.google.com/kubernetes-engine/docs/concepts/private-cluster-concept)
+
+A *private cluster* is a type of cluster that only depends on internal IP addresses. Nodes, Pods, and Services in a private cluster require unique subnet IP address ranges. To provide outbound internet access for certain private nodes, [Cloud NAT](https://cloud.google.com/nat/docs/overview) is used.
+
 
 * [Autopilot vs Standard clusters feature comparison](https://cloud.google.com/kubernetes-engine/docs/resources/autopilot-standard-feature-comparison)
 * [GKE Autopilot security capabilities](https://cloud.google.com/kubernetes-engine/docs/concepts/autopilot-security)
@@ -29,15 +45,16 @@ GKE best practices and other related resources.
 * [Terraform for opinionated GKE clusters](https://github.com/terraform-google-modules/terraform-google-kubernetes-engine)
 * [Production grade GKE network deployment, in 3 easy steps](https://medium.com/@pbijjala/3-key-best-practices-for-gke-deployment-4fa132e157e2).
 
+-->
+
+<!-- 
 ## Architecture
 
 Although this deployment is meant for proof-of-concept and experimental work, it implements many of the Google's [cluster security recommendations](https://cloud.google.com/kubernetes-engine/docs/how-to/hardening-your-cluster).
 
 * It is a [private cluster] so the cluster nodes do not have public IP addresses and there is no public endpoint for the control plane.
-<!-- * It has a _public endpoint_ with access limited to the _list of authorised control networks_; -->
 * [Cloud NAT] is configured to allow the cluster nodes and pods to access the Internet. So container registries located outside Google Cloud can be used.
 * The cluster nodes use a user-managed [least privilege service account].
-* The cluster is subscribed to the _Rapid_ [release channel].
 * [VPC Flow Logs] are enabled by default on the cluster and admin subnetworks.
 
 Some other aspects which used to be a thing when this sandbox was for deployment of Standard GKE clusters are now ["pre-configured"](https://cloud.google.com/kubernetes-engine/docs/resources/autopilot-standard-feature-comparison) by GKE Autopilot, but it's still useful to remember what they are:
@@ -63,9 +80,10 @@ Some other aspects which used to be a thing when this sandbox was for deployment
 [VPC Flow Logs]: https://cloud.google.com/vpc/docs/flow-logs
 
 ## Requirements
+-->
 
 <!-- TODO ideally you want the versions to be auto-generated (Terraform plus providers) -->
-
+<!-- 
 * [Terraform](https://www.terraform.io/), obviously.
 * A Google Cloud project with the [necessary permissions](#required-permissions) granted to you.
 * The project must be linked to an active [billing account].
@@ -76,9 +94,13 @@ Some other aspects which used to be a thing when this sandbox was for deployment
 
 Given that this is a research prototype, I am not that fussy about scoping every admin role that is needed to deploy this module. The `roles/owner` IAM basic role on the project would work. The `roles/editor` IAM basic role *might* work but I have not tested it. 
 
+-->
+
 <!--
 The operator must have the permissions to enable new services, create service accounts, set IAM bindings at project level.
 -->
+
+<!-- 
 
 If you fancy doing it *the hard way* &ndash; and there is time and place for such adventures, indeed &ndash; I hope this starting list of roles will help:
 
@@ -89,99 +111,26 @@ If you fancy doing it *the hard way* &ndash; and there is time and place for suc
 * Monitoring Admin (`roles/monitoring.admin`)
 * Private Logs Viewer (`roles/logging.privateLogViewer`)
 * Moar?!
-
-## IP address ranges
-
-For GKE Autopilot clusters, VPC-native traffic routing is enabled by default. See [VPC-native clusters](https://cloud.google.com/kubernetes-engine/docs/concepts/alias-ips).
-
-[Pod CIDR ranges in Autopilot clusters](https://cloud.google.com/kubernetes-engine/docs/how-to/flexible-pod-cidr#cidr_settings_for_clusters) lists the default settings for Autopilot cluster CIDR sizes.
-
-* Autopilot has a maximum Pods per node of [32](https://cloud.google.com/kubernetes-engine/quotas#limits_per_cluster). 
-* Because of Pod churn, twice that number of IP addresses may be required. So, there are `64` IP addresses allocated per node, or `2^6`.
-
-Let's consider two scenarios - a big and a small. A [CIDR range visualizer](https://cidr.xyz/) will be useful!
-
-### Go **BIG**!
-
-* If we'd like to have `1024` cluster nodes, or `2^10`, the total required IP space for Pods is `2^10 * 2^6 = 2^16`.
-* The VPC subnet secondary IP range for Pods does not have further restrictions.
-* So the size of the Pods CIDR is `/16`. I pick `192.168.0.0/16`.
-* The primary range must accommodate `2^10` nodes and because it's the primary range `4` IP addresses are reserved.
-* So, `2^11` bits are needed for the host part to represent the nodes. This leaves with `32-11=21` bits for the network part.
-* I choose `10.0.248.0/21` for the cluster subnet primary IP range.
-* In the third octet: `248 = 2^7 + 2^6 + 2^5 + 2^4 + 2^3`, and the lowest three bits are part of the host number.
-
-To sum up, in the **BIG** scenario, we have:
-
-* Nodes: `cluster_subnetwork_ipv4_cidr = "10.0.248.0/21"`. This can get us `2044` nodes. [Limits per cluster](https://cloud.google.com/kubernetes-engine/quotas#limits_per_cluster) state that running more than 400 nodes may require lifting a cluster size quota.
-* Pods: `pods_ipv4_cidr = "192.168.0.0/16"`. This gives `65536` Pods.
-* Services: `services_ipv4_cidr = null` or unset and so it gets the default value of `34.118.224.0/20`. This accommodates up to `4096` Services.
-
-This is, *obviously*, too big for a sandbox 😈
-
-### Go *smol*
-
-* Let's scale down the cluster node number to `128`, or `2^7`. The total required IP space for Pods is `2^7 * 2^6 = 2^13`.
-* So the size of the Pods CIDR is `/(32 - 13) = /19`. I pick `192.168.0.0/19` for convenience.
-* The primary range must accommodate `2^7` nodes and because it's the primary range `4` IP addresses are reserved.
-* At this small scale those four addresses actually make a difference - one can't fit `128` nodes into `7` bits.
-* So, `2^8` bits are needed for the host part to represent the nodes. This leaves with `32-8=24` bits for the network part.
-* I choose `10.0.0.0/24` for the cluster subnet primary IP range.
-* The last octet provides `2^8 - 4 = 255 - 4 = 251` cluster nodes.
-
-This leaves us with:
-
-* Nodes: `cluster_subnetwork_ipv4_cidr = "10.0.0.0/24"`. This can get us `252` nodes. 
-* Pods: `pods_ipv4_cidr = "192.168.0.0/19"`. This gives `8192` Pods.
-* Services: `services_ipv4_cidr = null` or unset and so it gets the default value of `34.118.224.0/20`. This accommodates up to `4096` Services.
-
-These values are much more reasonable for the sandbox 😉 So they are the default values for Terraform input variables.
-
-### Custom IP range for Services
-
-In the preceding two scenarios, I went with the Google-managed IP range for Services. This was done for convenience. Should I wish to provide my own custom value, it is possible. I'd probably go for `/20` anyway.
+-->
 
 ## Quick start
 
-Clone the repo and you are good to go! You can provide the input variables' values as command-line parameters to Terraform CLI:
+Clone the repo and you are good to go!
 
-```shell
-terraform init && terraform apply -var="project=infernal-horse" -var="region=europe-west4"
-```
+Only two input variables are required, the rest is optional with sensible and secure default values.
 
-* You _must_ set the Google Cloud project ID and Google Cloud region.
-* You _may_ set `authorized_networks` to enable access ot the cluster's endpoint from a public IP address. You still would have to authenticate.
-
-> **Note**
-> The default value for `authorized_networks` does not allow any public access to the cluster endpoint.
-
-To avoid having to provide the input variable values on the command line, you can create a variable definitions file, such as `env.auto.tfvars` and define the values therein.
+Create the variable definitions file `terraform.tfvars` with the following values:
 
 ```hcl
 google_project = "<PROJECT_ID>"
 google_region  = "<REGION>"
-
-authorized_networks = [
-  {
-    cidr_block   = "1.2.3.4/32"
-    display_name = "my-ip-address"
-  },
-]
 ```
 
 Note that you'd have to provide your own values for the variables 😉
 
-> **Note**
-> To find your public IP, you can run the following command
->
->  ```shell
->  dig -4 TXT +short o-o.myaddr.l.google.com @ns1.google.com
->  ```
+Now you can run Terraform as you normally would. Happy hacking! :shipit: :rocket:
 
-Now you can run Terraform (`init` ... `plan` ... `apply`) to deploy. 
-
-Happy hacking! :shipit:
-
+<!-- 
 ## Input variables
 
 > **Warning**
@@ -239,6 +188,8 @@ This deployment architecture serves three aims:
 # 060-cluster: create a GKE cluster (Standard)
 ```
 
+-->
+
 <!-- 
 ```
 TODO enable audit log entries for used APIs:
@@ -250,9 +201,64 @@ TODO add moar Terraform outputs to give a decent summary of what the cluster is 
 ```
 -->
 
+## (Deep Dive) IP address ranges
+
+
+> **Note**
+> This **optional** section provides two examples of reasoning that goes into defining the cluster's IP ranges.
+
+For GKE Autopilot clusters, VPC-native traffic routing is enabled by default. See [VPC-native clusters](https://cloud.google.com/kubernetes-engine/docs/concepts/alias-ips).
+
+[Pod CIDR ranges in Autopilot clusters](https://cloud.google.com/kubernetes-engine/docs/how-to/flexible-pod-cidr#cidr_settings_for_clusters) lists the default settings for Autopilot cluster CIDR sizes.
+
+* Autopilot has a maximum Pods per node of [32](https://cloud.google.com/kubernetes-engine/quotas#limits_per_cluster). 
+* Because of Pod churn, twice that number of IP addresses may be required. So, there are `64` IP addresses allocated per node, or `2^6`.
+
+Let's consider two scenarios - big and small. A [CIDR range visualizer](https://cidr.xyz/) will be useful!
+
+### Go **BIG**!
+
+* If we'd like to have `1024` cluster nodes, or `2^10`, the total required IP space for Pods is `2^10 * 2^6 = 2^16`.
+* The VPC subnet secondary IP range for Pods does not have further restrictions.
+* So the size of the Pods CIDR is `/16`. I pick `192.168.0.0/16`.
+* The primary range must accommodate `2^10` nodes and because it's the primary range `4` IP addresses are reserved.
+* So, `2^11` bits are needed for the host part to represent the nodes. This leaves with `32-11=21` bits for the network part.
+* I choose `10.0.248.0/21` for the cluster subnet primary IP range.
+* In the third octet: `248 = 2^7 + 2^6 + 2^5 + 2^4 + 2^3`, and the lowest three bits are part of the host number.
+
+To sum up, in the **BIG** scenario, we have:
+
+* Nodes: `cluster_subnetwork_ipv4_cidr = "10.0.248.0/21"`. This can get us `2044` nodes. [Limits per cluster](https://cloud.google.com/kubernetes-engine/quotas#limits_per_cluster) state that running more than 400 nodes may require lifting a cluster size quota.
+* Pods: `pods_ipv4_cidr = "192.168.0.0/16"`. This gives `65536` Pods.
+* Services: `services_ipv4_cidr = null` or unset and so it gets the default value of `34.118.224.0/20`. This accommodates up to `4096` Services.
+
+This is, *obviously*, too big for a sandbox 😈
+
+### Go *smol*
+
+* Let's scale down the cluster node number to `128`, or `2^7`. The total required IP space for Pods is `2^7 * 2^6 = 2^13`.
+* So the size of the Pods CIDR is `/(32 - 13) = /19`. I pick `192.168.0.0/19` for convenience.
+* The primary range must accommodate `2^7` nodes and because it's the primary range `4` IP addresses are reserved.
+* At this small scale those four addresses actually make a difference - one can't fit `128` nodes into `7` bits.
+* So, `2^8` bits are needed for the host part to represent the nodes. This leaves with `32-8=24` bits for the network part.
+* I choose `10.0.0.0/24` for the cluster subnet primary IP range.
+* The last octet provides `2^8 - 4 = 255 - 4 = 251` cluster nodes.
+
+This leaves us with:
+
+* Nodes: `cluster_subnetwork_ipv4_cidr = "10.0.0.0/24"`. This can get us `252` nodes. 
+* Pods: `pods_ipv4_cidr = "192.168.0.0/19"`. This gives `8192` Pods.
+* Services: `services_ipv4_cidr = null` or unset and so it gets the default value of `34.118.224.0/20`. This accommodates up to `4096` Services.
+
+These values are much more reasonable for the sandbox 😉 So they are the default values for Terraform input variables.
+
+### Custom IP range for Services
+
+In the preceding two scenarios, I went with the Google-managed IP range for Services. This was done for convenience. Should I wish to provide my own custom value, it is possible. I'd probably go for `/20` anyway.
+
 ## Future work
 
-Just some ideas for future explorations.
+Just a place to jot down some ideas for future explorations...
 
 * Deploy by impersonating a service account to validate the list of required admin roles;
 * Create a [private cluster with no public endpoint][pcwnpe] and access the endpoint using [IAP for TCP forwarding];
@@ -267,6 +273,7 @@ Just some ideas for future explorations.
 * Explore [Cloud DNS for GKE] option;
 * IPv6 set-up;
 * Explore [Anthos Service Mesh] (managed Istio);
+* Use Terraform's new "check" conditions to validate if `constraints/compute.vmExternalIpAccess` is set to restrict public IP addresses on the project and refuse to create public clusters
 
 [pcwnpe]: https://cloud.google.com/kubernetes-engine/docs/how-to/private-clusters#private_cp
 [IAP for TCP forwarding]: https://cloud.google.com/iap/docs/using-tcp-forwarding
@@ -317,3 +324,15 @@ TODO review, redraft, and find a new home for this information
 # On the other hand, we are not short of IP address space, and we don't anticipate having thousands and thousands of services.
 # Thus, the default (as if the secondary IP range assignment method was managed by GKE) size of /20, giving 4096 services, is good enough.
 -->
+
+## Contributions
+
+This is a personal sandbox so I am unlikely to accept *unexpected* pull requests. But if you have any feedback, please feel free to reach out! 😊
+
+## Let's connect
+
+If you have any questions or feedback on this module, let's connect!
+
+* Email: <oliver@devilmicelabs.com>
+* LinkedIn: [in/ofr](https://www.linkedin.com/in/ofr/)
+* Twitter: [nocturnalgopher](https://twitter.com/nocturnalgopher)
