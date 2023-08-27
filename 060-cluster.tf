@@ -33,9 +33,10 @@ resource "google_container_cluster" "private" {
     enable_components = [
       "SYSTEM_COMPONENTS",
       "WORKLOADS",
-      "APISERVER",
-      "SCHEDULER",
-      "CONTROLLER_MANAGER",
+      # TODO make the rest optional, off by default
+      # "APISERVER",
+      # "SCHEDULER",
+      # "CONTROLLER_MANAGER",
     ]
   }
 
@@ -46,13 +47,13 @@ resource "google_container_cluster" "private" {
       "APISERVER",
       "SCHEDULER",
       "CONTROLLER_MANAGER",
-#      TODO the rest requires Prometheus
-#      "STORAGE",
-#      "POD",
-#      "DEPLOYMENT",
-#      "STATEFULSET",
-#      "DAEMONSET",
-#      "HPA",
+      #      TODO the rest requires Prometheus
+      #      "STORAGE",
+      #      "POD",
+      #      "DEPLOYMENT",
+      #      "STATEFULSET",
+      #      "DAEMONSET",
+      #      "HPA",
     ]
     # TODO add Google Cloud Managed Service for Prometheus (will need extra configuration via PodMonitoring resources as well)
     # https://cloud.google.com/stackdriver/docs/managed-prometheus
@@ -124,3 +125,5 @@ resource "google_container_cluster" "private" {
     google_project_service.enabled["monitoring.googleapis.com"],
   ]
 }
+
+# TODO switch traffic from GCR to AR

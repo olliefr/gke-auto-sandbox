@@ -85,3 +85,5 @@ resource "google_iap_tunnel_instance_iam_member" "bastion_iap_tunnel" {
     google_project_service.enabled["iap.googleapis.com"],
   ]
 }
+
+# TODO install tinyproxy

@@ -64,20 +64,47 @@ resource "google_compute_subnetwork" "admin_net" {
   }
 }
 
-# TODO maybe firewall should go into its own stage?
-# TODO firewall rules between admin and cluster networks? between IAP and the admin network?
-
 # No manually created VPC has automatically created firewall rules except for a default "allow" rule
 # for outgoing traffic and a default "deny" for incoming traffic.
 
-# Ingress into the control plane IP range from the admin subnet (by the service account)
-resource "google_compute_firewall" "internal_admin_net_to_cluster_net" {
+# Ingress into the admin subnet from IAP using TCP forwarding
+# https://cloud.google.com/iap/docs/using-tcp-forwarding
+data "google_netblock_ip_ranges" "iap_forwarders" {
+  range_type = "iap-forwarders"
+}
+
+resource "google_compute_firewall" "iap_to_bastion" {
   provider = google
   project  = google_compute_network.custom_vpc.project
   network  = google_compute_network.custom_vpc.name
-  name     = "bastion-private-cluster-0-admin"
-  # TODO the cluster name should come from a variable
+  name     = "iap-to-bastion"
 
+  description = "The traffic from IAP to bastion only."
+
+  direction               = "INGRESS"
+  source_ranges           = data.google_netblock_ip_ranges.iap_forwarders.cidr_blocks_ipv4
+  target_service_accounts = [google_service_account.bastion.email]
+
+  allow {
+    protocol = "tcp"
+    ports    = ["22"]
+  }
+
+  log_config {
+    metadata = "INCLUDE_ALL_METADATA"
+  }
+}
+
+# Ingress into the control plane IP range from the admin subnet (by the service account)
+resource "google_compute_firewall" "bastion_to_cluster_control_plane" {
+  provider = google
+  project  = google_compute_network.custom_vpc.project
+  network  = google_compute_network.custom_vpc.name
+  name     = "bastion-to-private-cluster-control"
+
+  description = "The traffic from bastion to GKE clusters' control plane."
+
+  direction               = "INGRESS"
   source_service_accounts = [google_service_account.bastion.email]
   destination_ranges      = [var.master_ipv4_cidr]
 
@@ -91,27 +118,4 @@ resource "google_compute_firewall" "internal_admin_net_to_cluster_net" {
   }
 }
 
-# Ingress into the admin subnet from IAP using TCP forwarding
-# https://cloud.google.com/iap/docs/using-tcp-forwarding
-data "google_netblock_ip_ranges" "iap_forwarders" {
-  range_type = "iap-forwarders"
-}
-
-resource "google_compute_firewall" "external_iap_to_admin_net" {
-  provider = google
-  project  = google_compute_network.custom_vpc.project
-  network  = google_compute_network.custom_vpc.name
-  name     = "iap-tunnel-to-bastion"
-
-  source_ranges      = data.google_netblock_ip_ranges.iap_forwarders.cidr_blocks_ipv4
-  destination_ranges = [google_compute_subnetwork.admin_net.ip_cidr_range]
-
-  allow {
-    protocol = "tcp"
-    ports    = ["22"]
-  }
-
-  log_config {
-    metadata = "INCLUDE_ALL_METADATA"
-  }
-}
+# TODO add DNS for Private Google Access
